@@ -1,6 +1,6 @@
 # NOTICE
 
-This plugin is a port of upstream MIT-licensed work. The port's modifications and additions are also released under the [MIT license](LICENSE). All upstream copyright notices and license terms are preserved.
+This plugin is a fork of an MIT-licensed port of MIT-licensed work. The fork's modifications and additions are also released under the [MIT license](LICENSE). All upstream copyright notices and license terms are preserved.
 
 ## Upstream sources
 
@@ -18,6 +18,11 @@ This plugin is a port of upstream MIT-licensed work. The port's modifications an
 | `plugins/pstack/skills/{swarm,no-comments,technical-writing,bro}/`, `plugins/pstack/agents/comment-sicko.md`, `plugins/pstack/skills/poteto-mode/playbooks/{babysit,shipping,orchestrate,autopilot-full,autopilot-stack,worktree-cleanup}.md`, `plugins/pstack/skills/poteto-mode/references/bugbot-triage.md`, `plugins/pstack/skills/poteto-mode/scripts/`, `plugins/pstack/skills/architect/references/design-red-flags.md`, `plugins/pstack/skills/create-verification-skill/references/feature-map-example/` (v0.14.2 additions) | [cursor/plugins/pstack @ 4612556](https://github.com/cursor/plugins/tree/4612556/pstack) | (c) 2026 Lauren Tan | MIT | [LICENSE](LICENSE) |
 | `plugins/pstack/skills/poteto-mode/playbooks/multi-phase-plan.md`, `plugins/pstack/skills/poteto-mode/scripts/check-plan.mjs` (v0.14.8 additions) | [cursor/plugins/pstack @ 7314f72](https://github.com/cursor/plugins/tree/7314f72/pstack) | (c) 2026 Lauren Tan | MIT | [LICENSE](LICENSE) |
 | `plugins/pstack/skills/principle-attack-the-premise/`, `plugins/pstack/skills/principle-test-behavior-not-implementation/` (post-v0.14.8 additions) | [cursor/plugins/pstack @ e8d856f](https://github.com/cursor/plugins/tree/e8d856f/pstack) | (c) 2026 Lauren Tan | MIT | [LICENSE](LICENSE) |
+| The Claude Code and Codex port: manifests, hooks, `babysit`, `codex-tools.md`, `tools/`, `tests/`, and the port edits recorded in CHANGES.md up to 0.9.37 | [michael-denyer/pstack-claude @ 55853d9](https://github.com/michael-denyer/pstack-claude/tree/55853d9) | (c) 2026 Michael Denyer | MIT | [LICENSE](LICENSE) |
+
+## What changed in the fork
+
+The fork adds `plugins/pstack/skills/run-role/`, bundles `plugins/pstack/skills/orca-delegate/` (authored for the fork), extends `plugins/pstack/models.json` with providers and modes, and edits the dispatch sentences of `arena`, `swarm`, `architect`, `interrogate`, `how`, `why`, `reflect`, `poteto-mode`, and `setup-pstack`. See [CHANGES.md](CHANGES.md#0100---run-cross-provider-roles-as-orca-workers).
 
 ## What changed in the port
 

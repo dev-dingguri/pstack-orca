@@ -76,9 +76,9 @@ Source control is always available through git and `gh`. For the other six, clas
 
 Aim for a complete **coverage map**, not a minimal one. Document the null, don't skip the search.
 
-Launch all matching investigators in a single message so they run concurrently. Don't ask one agent to cover multiple MCPs.
+Launch all matching investigators in a single message through the **run-role** skill with role `why investigators` so they run concurrently. Don't ask one agent to cover multiple MCPs. A cross-provider entry runs as a `consult` Orca worker; give it only an evidence category its own tools can reach, because the host's MCPs do not travel with it.
 
-Subagent config (each):
+Subagent config (each native entry):
 - `subagent_type`: `general-purpose`
 - `model`: your configured why-investigators model (default in [Models](#models))
 - `readonly`: `false` (agent mode). **Do not use readonly/Ask mode.** It strips MCP access, which disables MCP-backed investigators entirely. Investigators still shouldn't write anything.
@@ -121,7 +121,7 @@ If your scope assessment suggests a single-commit trivial target where the PR de
 
 ## Step 4. Synthesize
 
-Spawn one synthesizer subagent:
+Spawn one synthesizer through the **run-role** skill with role `why synthesizer`; a native entry uses:
 
 - `subagent_type`: `general-purpose`
 - `model`: your configured why-synthesizer model (default in [Models](#models))
@@ -158,7 +158,7 @@ After the Sources Consulted block, if the user's `why` question is a precursor t
 
 ## Models
 
-Role defaults, stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). A matching role line in `~/.claude/pstack-models.md` overrides each at runtime; see `/setup-pstack`.
+Role defaults, stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). A matching role line in `~/.claude/pstack-models.md` overrides each at runtime; see `/setup-pstack`. Each entry is `slug@provider`; the **run-role** skill runs an entry natively when its provider is the host and as an Orca worker otherwise, in the mode shown.
 
-- why investigators: `claude-opus-5-5`
-- why synthesizer: `claude-opus-5-5`
+- why investigators: `claude-opus-5-5@claude` (consult)
+- why synthesizer: `claude-opus-5-5@claude` (consult)

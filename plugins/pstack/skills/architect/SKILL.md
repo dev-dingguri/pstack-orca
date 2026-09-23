@@ -31,7 +31,7 @@ Skip Phase A only when the work is genuinely greenfield with no surrounding syst
 
 Run the **arena** skill with the design-sketch task and the Phase A grounding artifacts. Pass `references/runner-prompt.md` as each runner's prompt. Each candidate produces a design package shaped per `references/rationale-template.md`.
 
-Use your configured architect runners (defaults in [Models](#models)).
+Use your configured architect runners (defaults in [Models](#models)). Tell Arena to resolve its runners through the **run-role** skill with role `architect runners`, so a cross-provider entry sketches as a `consult` Orca worker instead of an arena candidate that edits source.
 
 Design it twice. Require at least two structurally distinct candidates before synthesis, even when the first looks sufficient. This is the **exhaust-the-design-space** principle skill made concrete. Whole-shape alternatives, not point fixes inside one shape.
 
@@ -89,6 +89,6 @@ The caller's usage is written first and the type sketch derived from it. One fil
 
 ## Models
 
-Role defaults, stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). A matching role line in `~/.claude/pstack-models.md` overrides each at runtime; see `/setup-pstack`.
+Role defaults, stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). A matching role line in `~/.claude/pstack-models.md` overrides each at runtime; see `/setup-pstack`. Each entry is `slug@provider`; the **run-role** skill runs an entry natively when its provider is the host and as an Orca worker otherwise, in the mode shown.
 
-- architect runners: `claude-opus-5-5`, `claude-fable-5-1`, `claude-sonnet-5`
+- architect runners: `claude-opus-5-5@claude`, `gpt-5.6-sol@codex`, `claude-fable-5-1@claude` (consult)

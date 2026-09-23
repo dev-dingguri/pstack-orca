@@ -1,17 +1,17 @@
 {
-  "name": "pstack-claude",
+  "name": "pstack-orca",
   "owner": {
-    "name": "Michael Denyer",
-    "email": "mdenyer@gmail.com",
-    "url": "https://github.com/michael-denyer"
+    "name": "dev-dingguri",
+    "email": "dev.dingguri@gmail.com",
+    "url": "https://github.com/dev-dingguri"
   },
-  "description": "Claude Code port of poteto's pstack. Rigorous agent workflows with Cursor primitives translated to Claude Code equivalents.",
+  "description": "Fork of pstack-claude that runs pstack roles on more than one provider: native subagents for the host, supervised Orca workers for the rest.",
   "plugins": [
     {
       "name": "pstack",
       "source": "./plugins/pstack",
-      "description": "if you want to go fast, go deep first. pstack helps you write less, but higher quality code. rigorous agent workflows you can parallelize with confidence. Original pstack by Lauren Tan (poteto).",
-      "version": "0.9.37"
+      "description": "if you want to go fast, go deep first. pstack helps you write less, but higher quality code. rigorous agent workflows you can parallelize with confidence. Original pstack by Lauren Tan (poteto). Multi-provider roles through Orca by dev-dingguri.",
+      "version": "0.10.0"
     }
   ]
 }

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Orca Delegate"
+  short_description: "Delegate to another coding agent through Orca and verify results"
+  default_prompt: "Use $orca-delegate to delegate this task to another coding agent through Orca and return the verified result."
+policy:
+  allow_implicit_invocation: true

@@ -95,6 +95,8 @@ Read the leaf skill in full for any principle you apply. Each entry names when i
 
 **Defaults for every `Agent` call.** `run_in_background: true`, full tool access (do not pick a subagent_type that strips MCP), file pointers not inlined context, explicit model per role (configurable via `/setup-pstack`; role defaults in [Models](#models), with "judgment and prose" covering prose and judgment). Code delegates tier by difficulty. The hardest changes (cross-cutting design, gnarly concurrency, subtle algorithms) go to your strongest-judgment model (default in [Models](#models)), whether the task needs judgment on vague intent or is a precisely specified sequence of steps to execute to the letter; trivial mechanical edits go to your fast code model; everything else uses the single-role default. Multi-model panels run the configured panel for diversity, with defaults enumerated in each panel skill's Models section (`arena`, `architect`, `interrogate`). Per-role `/setup-pstack` lines override these defaults and the model choices in the routed skills (`how`, `why`, `arena`, `swarm`, `architect`, `interrogate`, `reflect`); a role with no line keeps its default, and a role line of `inherit-parent` or `auto` runs that role on the parent session's model (omit `model` on the `Agent` call).
 
+**Every role dispatch goes through the run-role skill.** An entry whose provider matches the host runs as a native `Agent` call with the defaults above; any other entry runs as a supervised Orca worker under the bundled **orca-delegate** skill, in the mode run-role's Roles table fixes for that role. A failed Orca start stops for the user's decision; nothing falls back on its own. While an `execute` worker holds the current worktree, leave that worktree's source alone until it settles.
+
 You own every subagent's work. Review the diff and write your own summary, don't pass through what it said. Interrupt-chained resumes silently drop directives, so fire a fresh subagent with consolidated scope rather than trusting a "done" summary. **Stop the abandoned agent first, and confirm it stopped.** In the agent listing `completed` means the completion was *notified*, not that the process exited: an agent with live background children reports completed and then resumes. Only an explicit stop ends it, and the stop tool may be deferred, so load it before you need it. The tell that one is still running is a claim about the working tree that `git status` contradicts. A second opinion is the same prompt against a different model. Agreement is high-signal.
 
 ## Writing the reply
@@ -146,11 +148,11 @@ A large or cross-cutting effort (a migration across many call sites, an ambitiou
 
 ## Models
 
-Role defaults, stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). A matching role line in `~/.claude/pstack-models.md` overrides each at runtime; see `/setup-pstack`.
+Role defaults, stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). A matching role line in `~/.claude/pstack-models.md` overrides each at runtime; see `/setup-pstack`. Each entry is `slug@provider`; the **run-role** skill runs an entry natively when its provider is the host and as an Orca worker otherwise, in the mode shown.
 
-- feature, refactoring: `claude-opus-5-5`
-- bug-fix: `claude-fable-5-1`
-- perf-issue: `claude-fable-5-1`
-- hillclimb: `claude-fable-5-1`
-- judgment and prose: `claude-opus-5-5`
-- strongest judgment: `claude-fable-5-1`
+- feature, refactoring: `claude-opus-5-5@claude` (execute)
+- bug-fix: `claude-fable-5-1@claude` (execute)
+- perf-issue: `claude-fable-5-1@claude` (execute)
+- hillclimb: `claude-fable-5-1@claude` (execute)
+- judgment and prose: `claude-opus-5-5@claude` (consult)
+- strongest judgment: `claude-fable-5-1@claude` (execute)

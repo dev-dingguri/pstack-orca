@@ -345,6 +345,7 @@ describe("Codex model names", () => {
     for (const role of ["bug-fix", "perf-issue", "hillclimb", "strongest judgment"]) {
       expect(section).toContain(role);
     }
-    expect(section).not.toContain("claude-opus-5");
+    expect(section).toContain("run-role");
+    for (const slug of models.codex.panelQuad) expect(section).toContain(`${slug}@`);
   });
 });

@@ -1,6 +1,15 @@
 # Contributing
 
-Thanks for helping out. This repo is a **port**, not an original work: the `skills/` tree tracks [upstream pstack](https://github.com/cursor/plugins/tree/main/pstack) and gets synced forward periodically. That one fact shapes most of what follows.
+Thanks for helping out. This repo is a **fork of a port**, not an original work: it forks [pstack-claude](https://github.com/michael-denyer/pstack-claude), whose `skills/` tree tracks [upstream pstack](https://github.com/cursor/plugins/tree/main/pstack). The fork owns provider routing (`run-role`, `orca-delegate`, the `provider` and `mode` fields in `models.json`, and the dispatch sentences in the fan-out skills). Everything else merges in from pstack-claude. Those facts shape most of what follows.
+
+## Syncing from pstack-claude
+
+```shell
+git fetch upstream
+git merge upstream/main
+```
+
+`upstream` is `https://github.com/michael-denyer/pstack-claude.git`. Resolve conflicts in favour of upstream except in the fork-owned files above; `tests/skill-rules.test.mjs` pins the fork's dispatch sentences so a merge that drops one fails. Then run the generator and the tests. The Cursor sync tool below still works and is how pstack-claude advances its own pin; run it here only when pstack-claude lags behind Cursor and you want to carry a change ahead of it.
 
 [CONTEXT.md](CONTEXT.md) is the glossary for the terms below.
 
@@ -51,7 +60,7 @@ CI reruns the generator and fails if files change, so commit its output.
 
 When adding a skill, include `name` and `description` in its frontmatter. Public skills also need a row in the slash-command table. The row supplies the Codex menu description and ordering. The generator reports any skill missing a row or any row without a skill.
 
-Change model defaults in `models.json`, never in a skill body. A role with `models: "panel"` uses the shared panel list. `tests/models.test.mjs` checks the configuration's structure and that skills name every role they use. A `claude-*` model name outside a generated region fails the generator with its file and line.
+Change model defaults in `models.json`, never in a skill body. Every available model names its `provider`, every role names its `mode`, and a role with `models: "panel"` uses the shared panel list. The generator renders entries as `slug@provider` and stamps the run-role Roles table. `tests/models.test.mjs` checks the configuration's structure and that skills name every role they use. A `claude-*` model name outside a generated region fails the generator with its file and line.
 
 `bun test tests/` covers the generator, the sync tool, the link validator, and `tests/invariants.test.mjs`, which builds fixture trees that must trip each layout invariant. One check is behavioral and lives in `tests/skill-collision-repro.sh`: it needs the `claude` CLI and API access and makes one haiku call to prove a user-typed `/plugin:name` reaches a skill with no `commands/` present. CI cannot run it, so run it locally at least once before a release.
 

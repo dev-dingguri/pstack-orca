@@ -28,7 +28,7 @@ Open a todolist with one entry per phase before launching anything.
 
 ## Phase B: Fan out
 
-Spawn all N workers in one message with `subagent_type: "general-purpose"`, `run_in_background: true`, and the configured model. Claude Code subagents all run on this machine, so isolation comes from the worktree or output directory assigned in Phase A, not from a remote environment.
+Spawn all N workers in one message through the **run-role** skill with role `swarm workers`: native entries get `subagent_type: "general-purpose"`, `run_in_background: true`, and the configured model; a cross-provider entry runs as an `execute` Orca worker in its assigned worktree. Claude Code subagents all run on this machine, so isolation comes from the worktree or output directory assigned in Phase A, not from a remote environment.
 
 When a worker must start from a non-default branch, check that branch out in the worker's own worktree and name the worktree path in its brief.
 
@@ -48,6 +48,6 @@ Return one consolidated in-chat report with the table, issue one-liners, gaps or
 
 ## Models
 
-Role defaults, stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). A matching role line in `~/.claude/pstack-models.md` overrides each at runtime; see `/setup-pstack`.
+Role defaults, stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). A matching role line in `~/.claude/pstack-models.md` overrides each at runtime; see `/setup-pstack`. Each entry is `slug@provider`; the **run-role** skill runs an entry natively when its provider is the host and as an Orca worker otherwise, in the mode shown.
 
-- swarm workers: `claude-opus-5-5`
+- swarm workers: `claude-opus-5-5@claude` (execute)

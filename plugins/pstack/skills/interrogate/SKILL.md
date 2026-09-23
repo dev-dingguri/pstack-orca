@@ -34,13 +34,13 @@ Write one clear paragraph. If you're unsure about the intent, ask the user befor
 
 ## Step 3, Spawn Reviewers
 
-Launch all reviewers in a single message using the `Agent` tool. Use the `interrogate reviewers` list from `~/.claude/pstack-models.md` when present, one reviewer per entry, extending or shrinking the Reviewer A/B/C/D labels below to the configured entry count; otherwise use the table defaults.
+Launch all reviewers in a single message through the **run-role** skill with role `interrogate reviewers`. Use the `interrogate reviewers` list from `~/.claude/pstack-models.md` when present, one reviewer per entry, extending or shrinking the Reviewer A/B/C/D labels below to the configured entry count; otherwise use the table defaults. An entry whose provider is the host is an `Agent` call with the fields below; any other entry runs as a `consult` Orca worker that writes its review to the path run-role names.
 
 | Subagent | Default model |
 |----------|---------------|
-| Reviewer A | `claude-opus-5-5` |
-| Reviewer B | `claude-fable-5-1` |
-| Reviewer C | `claude-sonnet-5` |
+| Reviewer A | `claude-opus-5-5@claude` |
+| Reviewer B | `gpt-5.6-sol@codex` |
+| Reviewer C | `claude-fable-5-1@claude` |
 
 For each reviewer:
 - `subagent_type`: `general-purpose`

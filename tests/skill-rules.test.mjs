@@ -95,6 +95,61 @@ const rules = [
     file: "poteto-mode/playbooks/babysit.md",
     phrase: "confirm that the PR or stack it reports matches the request",
   },
+  {
+    source: "pstack-orca run-role is the dispatch seam",
+    file: "poteto-mode/SKILL.md",
+    phrase: "Every role dispatch goes through the run-role skill.",
+  },
+  {
+    source: "pstack-orca arena runners through run-role",
+    file: "arena/SKILL.md",
+    phrase: "through the **run-role** skill with role `arena runners`",
+  },
+  {
+    source: "pstack-orca arena judge through run-role",
+    file: "arena/SKILL.md",
+    phrase: "through the **run-role** skill with role `arena cross-judge pool`",
+  },
+  {
+    source: "pstack-orca swarm workers through run-role",
+    file: "swarm/SKILL.md",
+    phrase: "through the **run-role** skill with role `swarm workers`",
+  },
+  {
+    source: "pstack-orca architect runners through run-role",
+    file: "architect/SKILL.md",
+    phrase: "through the **run-role** skill with role `architect runners`",
+  },
+  {
+    source: "pstack-orca interrogate reviewers through run-role",
+    file: "interrogate/SKILL.md",
+    phrase: "through the **run-role** skill with role `interrogate reviewers`",
+  },
+  {
+    source: "pstack-orca how explorers through run-role",
+    file: "how/SKILL.md",
+    phrase: "through the **run-role** skill with role `how explorer`",
+  },
+  {
+    source: "pstack-orca why investigators through run-role",
+    file: "why/SKILL.md",
+    phrase: "through the **run-role** skill with role `why investigators`",
+  },
+  {
+    source: "pstack-orca reflect reviewers through run-role",
+    file: "reflect/SKILL.md",
+    phrase: "three dispatches through the **run-role** skill",
+  },
+  {
+    source: "pstack-orca no silent fallback",
+    file: "run-role/SKILL.md",
+    phrase: "Do not retry silently and do not fall back.",
+  },
+  {
+    source: "pstack-orca setup records Orca without probing",
+    file: "setup-pstack/SKILL.md",
+    phrase: "do not start a worker to check, because only a real start decides availability",
+  },
 ];
 
 describe("port-local skill rules", () => {

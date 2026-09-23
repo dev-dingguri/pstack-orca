@@ -20,7 +20,7 @@ When in doubt, take the simple path.
 
 ## Step 2a. Explore (complex questions only)
 
-Decompose the question into 2 to 4 exploration angles, each a distinct slice of the subsystem. Spawn all explorers in a single message:
+Decompose the question into 2 to 4 exploration angles, each a distinct slice of the subsystem. Spawn all explorers in a single message through the **run-role** skill with role `how explorer`; native entries use:
 
 - `subagent_type`: `general-purpose`
 - `model`: your configured how-explorer model (default in [Models](#models))
@@ -30,7 +30,7 @@ Each explorer gets the prompt in `references/explorer-prompt.md` with its angle 
 
 ## Step 2b. Direct Explain (simple questions)
 
-Spawn one Task subagent that explores and explains in one pass:
+Spawn one subagent through the **run-role** skill with role `how explainer` that explores and explains in one pass; a native entry uses:
 
 - `subagent_type`: `general-purpose`
 - `model`: your configured how-explainer model (default in [Models](#models))
@@ -40,7 +40,7 @@ Build its prompt from `references/explainer-prompt.md` without the explorer-find
 
 ## Step 3. Synthesize (complex questions only)
 
-Once all explorers have returned, spawn one Task subagent to synthesize their findings into one explanation:
+Once all explorers have returned, spawn one subagent through the **run-role** skill with role `how explainer` to synthesize their findings into one explanation; a native entry uses:
 
 - `subagent_type`: `general-purpose`
 - `model`: your configured how-explainer model (default in [Models](#models))
@@ -58,7 +58,7 @@ The explanation uses the sections defined in `references/explainer-prompt.md`, d
 
 ## Models
 
-Role defaults, stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). A matching role line in `~/.claude/pstack-models.md` overrides each at runtime; see `/setup-pstack`.
+Role defaults, stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). A matching role line in `~/.claude/pstack-models.md` overrides each at runtime; see `/setup-pstack`. Each entry is `slug@provider`; the **run-role** skill runs an entry natively when its provider is the host and as an Orca worker otherwise, in the mode shown.
 
-- how explorer: `claude-opus-5-5`
-- how explainer: `claude-opus-5-5`
+- how explorer: `claude-opus-5-5@claude` (consult)
+- how explainer: `claude-opus-5-5@claude` (consult)

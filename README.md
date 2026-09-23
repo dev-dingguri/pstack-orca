@@ -1,8 +1,8 @@
-# pstack
+# pstack-orca
 
-Lauren Tan's [pstack](https://github.com/cursor/plugins/tree/main/pstack) is an opinionated Cursor skill stack that improves agent outcomes. This is a faithful port for Claude Code, Codex and other agent harnesses.
+Lauren Tan's [pstack](https://github.com/cursor/plugins/tree/main/pstack) is an opinionated Cursor skill stack that improves agent outcomes. Michael Denyer's [pstack-claude](https://github.com/michael-denyer/pstack-claude) ports it to Claude Code, Codex and other agent harnesses. This fork adds what the port had to drop: a role can run on a model from another provider.
 
-Tell `poteto-mode` your goal and it will invoke the correct workflow for the task. It keeps your code concise, simple and verified.
+Tell `poteto-mode` your goal and it will invoke the correct workflow for the task. It keeps your code concise, simple and verified. When a role's model belongs to another provider, the `run-role` skill launches it as a supervised [Orca](https://orca.dev) worker through the bundled `orca-delegate` skill; roles on the host provider stay native subagents.
 
 ## Install
 
@@ -11,8 +11,8 @@ Tell `poteto-mode` your goal and it will invoke the correct workflow for the tas
 Run in Claude Code:
 
 ```text
-/plugin marketplace add michael-denyer/pstack-claude
-/plugin install pstack@pstack-claude
+/plugin marketplace add dev-dingguri/pstack-orca
+/plugin install pstack@pstack-orca
 ```
 
 ### Codex
@@ -20,11 +20,13 @@ Run in Claude Code:
 Run in your terminal:
 
 ```shell
-codex plugin marketplace add michael-denyer/pstack-claude
-codex plugin add pstack@pstack-claude
+codex plugin marketplace add dev-dingguri/pstack-orca
+codex plugin add pstack@pstack-orca
 ```
 
-Run `setup-pstack` to change model defaults or turn automatic routing off. The plugin installs the routing hook on Claude Code and Codex; Codex asks you to trust it through `/hooks` before it runs. In Claude Code, use `/pstack:setup-pstack`.
+The plugin keeps the `pstack` name, so it replaces pstack-claude rather than installing beside it.
+
+Run `setup-pstack` to change model defaults or turn automatic routing off. Every model entry is `slug@provider`; the default panel mixes Claude and Codex models, and single-model roles stay on the host. Cross-provider entries need Orca installed; a start that fails is reported and waits for your decision. The plugin installs the routing hook on Claude Code and Codex; Codex asks you to trust it through `/hooks` before it runs. In Claude Code, use `/pstack:setup-pstack`.
 
 For Prime Agent, OpenCode, Gemini CLI, or skills-only installs for any harness, see [shared installation](docs/reference.md#shared-skills-installation).
 
@@ -42,6 +44,7 @@ For a bug, it reproduces the failure, uses `how` and `why` to investigate, deleg
 
 ## Details
 
+- [Multi-provider roles](docs/reference.md#multi-provider-roles)
 - [Skills and slash commands](docs/reference.md#slash-commands)
 - [Runtime setup](docs/reference.md#runtime-support)
 - [Models and dependencies](docs/reference.md#configuration-and-dependencies)
@@ -49,8 +52,8 @@ For a bug, it reproduces the failure, uses `how` and `why` to investigate, deleg
 
 ## Contributing
 
-Thanks for helping make this port better. Bug reports, documentation fixes, and runtime improvements are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the checks and where your change belongs. Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
+Thanks for helping make this fork better. Bug reports, documentation fixes, and runtime improvements are welcome. Workflow changes belong upstream in pstack-claude or pstack; provider routing belongs here. See [CONTRIBUTING.md](CONTRIBUTING.md) for the checks and where your change belongs. Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
 
 ## License
 
-This port, including its modifications and additions, is also [MIT-licensed](LICENSE). Original pstack © 2026 Lauren Tan; imported cursor-team-kit skills © 2026 Cursor. See [LICENSE-cursor-team-kit](LICENSE-cursor-team-kit) and [NOTICE.md](NOTICE.md).
+This fork, including its modifications and additions, is also [MIT-licensed](LICENSE). Original pstack © 2026 Lauren Tan; pstack-claude port © 2026 Michael Denyer; imported cursor-team-kit skills © 2026 Cursor. See [LICENSE-cursor-team-kit](LICENSE-cursor-team-kit) and [NOTICE.md](NOTICE.md).

@@ -1,15 +1,15 @@
 {
   "name": "pstack",
-  "displayName": "pstack (Claude Code port)",
-  "version": "0.9.37",
-  "description": "if you want to go fast, go deep first. pstack helps you write less, but higher quality code. rigorous agent workflows you can parallelize with confidence. Ported from cursor/plugins/pstack to Claude Code. Original pstack by Lauren Tan (poteto).",
+  "displayName": "pstack (Orca multi-provider fork)",
+  "version": "0.10.0",
+  "description": "if you want to go fast, go deep first. pstack helps you write less, but higher quality code. rigorous agent workflows you can parallelize with confidence. Fork of michael-denyer/pstack-claude that runs cross-provider roles as Orca workers. Original pstack by Lauren Tan (poteto).",
   "author": {
-    "name": "Michael Denyer",
-    "email": "mdenyer@gmail.com",
-    "url": "https://github.com/michael-denyer"
+    "name": "dev-dingguri",
+    "email": "dev.dingguri@gmail.com",
+    "url": "https://github.com/dev-dingguri"
   },
-  "homepage": "https://github.com/michael-denyer/pstack-claude",
-  "repository": "https://github.com/michael-denyer/pstack-claude",
+  "homepage": "https://github.com/dev-dingguri/pstack-orca",
+  "repository": "https://github.com/dev-dingguri/pstack-orca",
   "license": "MIT",
   "keywords": [
     "pstack",
@@ -27,6 +27,8 @@
     "codex",
     "opencode",
     "gemini-cli",
-    "prime-agent"
+    "prime-agent",
+    "orca",
+    "multi-provider"
   ]
 }

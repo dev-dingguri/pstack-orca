@@ -2,6 +2,17 @@
 
 This port applies the Cursor → Claude Code substitutions in skill bodies. Earlier drafts left them flagged; this revision resolves them. A later pass added a Codex build that shares the same skills; see [Codex port](#codex-port) below.
 
+## 0.10.0 - run cross-provider roles as Orca workers
+
+This fork of [pstack-claude](https://github.com/michael-denyer/pstack-claude) restores the original pstack's per-role provider choice on Claude Code and Codex. Everything below is a deliberate local fork. Preserve it during upstream merges.
+
+- `plugins/pstack/models.json` gains a `providers` list, a `provider` field on every available model, a `mode` (`consult` or `execute`) on every role, and the Codex models as available entries. The default panel mixes providers (`claude-opus-5-5`, `gpt-5.6-sol`, `claude-fable-5-1`); single-model roles stay on the host provider.
+- The generator renders every model entry as `slug@provider`, stamps a Roles table into the new `run-role` skill, groups the setup skill's available-model line by provider, and rewrites the Codex model-names section for a host where Claude entries run as Orca workers. The stray-slug scan normalises path separators so it runs on Windows.
+- New `run-role` skill: the one place that turns a role into running agents. An entry whose provider is the host is a native subagent; any other entry is a supervised Orca worker dispatched through the bundled `orca-delegate` skill in the role's mode. A failed Orca start is reported with the attempted command and the error, then the user chooses retry, native substitute, or dropout; nothing falls back on its own.
+- `orca-delegate` is bundled as a skill with its file-delivery reference and contract helper. Its description names `run-role` as a caller.
+- `arena`, `swarm`, `architect`, `interrogate`, `how`, `why`, `reflect`, and `poteto-mode` dispatch their roles through `run-role` instead of calling `Agent` directly; the prompts, output paths, and review steps are unchanged. `setup-pstack` writes `slug@provider` entries and records whether Orca is installed without probing.
+- Repository metadata, README, reference, notices, and glossary describe the fork. The upstream pin for the Cursor tree remains at `e8d856f`; the fork merges pstack-claude through git.
+
 ## 0.9.37 - move the Opus roles to Opus 5.5
 
 `plugins/pstack/models.json` names `claude-opus-5-5` where it named `claude-opus-5`: the single-role default, the panel, and every single-model role that ran Opus 5 (`feature, refactoring`, `judgment and prose`, `how explorer`, `how explainer`, `why investigators`, `why synthesizer`, `reflect tooling`, `reflect judgment, divergent, synthesizer`, `swarm workers`). The generator restamped the `## Models` sections, the interrogate reviewer table, and setup-pstack's override sheet and available-model line. Opus 5.5 joins the available-model list as `Opus 5.5`; Opus 5 stays there for `/setup-pstack` overrides. The Fable roles are unchanged. The pin remains at `e8d856f`.

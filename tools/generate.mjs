@@ -306,6 +306,17 @@ export function promptStub({ name, menu }) {
 const code = (s) => `\`${s}\``;
 const codeList = (models) => models.map(code).join(", ");
 
+// A model entry as the sheet and every stamped section spell it: the slug
+// plus the provider that runs it natively, so a reader never has to look the
+// provider up. run-role splits the pair when it dispatches.
+export function providerOf(models, slug) {
+  const entry = models.available.find((m) => m.slug === slug);
+  if (!entry) throw new Error(`models.json: ${slug} is not in the available list`);
+  return entry.provider;
+}
+const tag = (models, slug) => `${slug}@${providerOf(models, slug)}`;
+const tagList = (models, slugs) => slugs.map((s) => code(tag(models, s))).join(", ");
+
 // Locators find a generator-owned span of a file and return its [start, end)
 // line range, or null when the anchor is absent. The same locator serves the
 // stamp (splice the rendered lines in) and the stray-slug scan (skip the
@@ -350,6 +361,7 @@ const blankPadded = (body) => ["", ...body.split("\n"), ""];
 // means adding a row here; the stray-slug scan exempts exactly these spans.
 export function regions(models) {
   const skillFile = (skill) => `plugins/pstack/skills/${skill}/SKILL.md`;
+  const runRole = skillFile("run-role");
   const rolesBySkill = new Map();
   for (const r of models.roles) {
     if (!rolesBySkill.has(r.skill)) rolesBySkill.set(r.skill, []);
@@ -364,13 +376,19 @@ export function regions(models) {
         name: "Models section",
         locate: section("Models"),
         appendHeading: "## Models",
-        render: () => blankPadded(modelsSection(roles)),
+        render: () => blankPadded(modelsSection(roles, models)),
       })),
     {
       file: skillFile("interrogate"),
       name: "reviewer table",
       locate: tableRows("| Subagent | Default model |", "| Reviewer "),
-      render: () => reviewers.map((m, i) => `| Reviewer ${String.fromCharCode(65 + i)} | ${code(m)} |`),
+      render: () => reviewers.map((m, i) => `| Reviewer ${String.fromCharCode(65 + i)} | ${code(tag(models, m))} |`),
+    },
+    {
+      file: runRole,
+      name: "Roles section",
+      locate: section("Roles"),
+      render: () => blankPadded(rolesSection(models)),
     },
     {
       file: skillFile("setup-pstack"),
@@ -447,33 +465,52 @@ export function deriveSkill(file, text, models = loadModels()) {
   return applyRegions(file, lines.join("\n"), models, { strict: false });
 }
 
-export function modelsSection(roles) {
-  const bullets = roles.map((r) => `- ${r.role}: ${codeList(r.models)}`).join("\n");
+export function modelsSection(roles, models) {
+  const bullets = roles.map((r) => `- ${r.role}: ${tagList(models, r.models)} (${r.mode})`).join("\n");
   return (
     "Role defaults, stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). " +
-    "A matching role line in `~/.claude/pstack-models.md` overrides each at runtime; see `/setup-pstack`.\n\n" +
+    "A matching role line in `~/.claude/pstack-models.md` overrides each at runtime; see `/setup-pstack`. " +
+    "Each entry is `slug@provider`; the **run-role** skill runs an entry natively when its provider is the host " +
+    "and as an Orca worker otherwise, in the mode shown.\n\n" +
     bullets
   );
 }
 
+// The run-role skill's dispatch table: every role, the skill that owns it,
+// the Orca mode a cross-provider entry runs in, and the default entries.
+export function rolesSection(models) {
+  const rows = models.roles.map((r) => `| ${r.role} | ${r.skill} | ${r.mode} | ${tagList(models, r.models)} |`);
+  return (
+    "Stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). " +
+    "A matching role line in the override sheet replaces the default entries; the mode is fixed per role.\n\n" +
+    "| Role | Skill | Mode | Default entries |\n| --- | --- | --- | --- |\n" +
+    rows.join("\n")
+  );
+}
+
 export function setupModelsSection(models) {
-  const avail = models.available.map((m) => `${m.label} (${code(m.slug)})`).join(", ");
+  const byProvider = models.providers.map((p) => {
+    const avail = models.available.filter((m) => m.provider === p.id).map((m) => `${m.label} (${code(m.slug)})`);
+    return `- Available ${p.label} models (provider ${code(p.id)}, native on ${p.host}): ${avail.join(", ")}`;
+  });
   return (
     "Stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`).\n\n" +
-    `- Available Claude models: ${avail}\n` +
-    `- Default panel: ${codeList(models.panel)}\n` +
-    `- Single-role default: ${code(models.singleRoleDefault)}`
+    `${byProvider.join("\n")}\n` +
+    `- Default panel: ${tagList(models, models.panel)}\n` +
+    `- Single-role default: ${code(tag(models, models.singleRoleDefault))}`
   );
 }
 
 // The override sheet the setup skill writes for users. The preamble is fixed;
 // the role rows come from models.json.
 export function overrideSheetBlock(models) {
-  const rows = models.roles.map((r) => `${r.role}: ${r.models.join(", ")}`).join("\n");
+  const rows = models.roles.map((r) => `${r.role}: ${r.models.map((m) => tag(models, m)).join(", ")}`).join("\n");
   return (
     "# pstack model configuration\n\n" +
     "Per-role model overrides for pstack skills. Each pstack SKILL.md names its defaults in a Models section; " +
     "the values here override those defaults. Delete a line to fall back to the skill default. " +
+    "Write each entry as `slug@provider`; an entry whose provider is not the host runs as an Orca worker " +
+    "through the run-role skill, and a bare slug must be one the setup skill lists. " +
     "A value of `inherit-parent` or `auto` runs that role on the parent session's model (the `Agent` call omits `model`); " +
     "an alias entry in a panel list still counts toward that panel's fan-out. " +
     "`session hook: off` stops the Claude Code or Codex SessionStart hook from injecting the poteto-mode mandate; " +
@@ -488,17 +525,19 @@ export function codexModelNamesSection(models) {
     (r) => r.models.length === 1 && r.models[0] !== models.singleRoleDefault,
   );
   return (
-    "Skills name Claude defaults (a single-role default for code/prose/judgment plus a diverse-model panel for " +
-    "diverse-model panels; each model-consuming skill lists its own in a Models section). These slugs do not " +
-    "resolve on Codex. Substitute your configured Codex models:\n\n" +
+    "Skills name defaults as `slug@provider` entries (a single-role default for code/prose/judgment plus a " +
+    "mixed-provider panel; each model-consuming skill lists its own in a Models section). On Codex the host " +
+    "provider is `codex`: a `codex` entry runs natively through `spawn_agent`, and a `claude` entry runs as an " +
+    "Orca worker running Claude Code, dispatched by the `run-role` skill through the bundled `orca-delegate` " +
+    "skill. Keep single-model roles on the host so the caller is not blocked on a worker:\n\n" +
     `- Single-model roles: your primary Codex model (for example ${code(models.codex.singleRoleExample)}).\n` +
     `- Roles that default to the strongest Claude model (${strongest.map((r) => code(r.role)).join(", ")}): ` +
     `your strongest Codex model (for example ${code(models.codex.strongestRoleExample)}).\n` +
-    "- Diverse-model panels (`arena`, `architect`, `interrogate`, `how` critics, `reflect`): the adversarial " +
-    "signal comes from model diversity, so use the distinct Codex models available to you. A good default quad " +
-    `on ChatGPT is ${codeList(models.codex.panelQuad)}. If only one model family is reachable, vary reasoning ` +
-    "effort and note in the verdict that diversity was reduced.\n\n" +
-    "`/setup-pstack` writes the configured model list. On Codex, set it to your Codex model slugs."
+    "- Mixed-provider panels (`arena`, `architect`, `interrogate`, `how` critics, `reflect`): the adversarial " +
+    "signal comes from model diversity, so keep entries from both providers. A good default quad " +
+    `on Codex is ${tagList(models, models.codex.panelQuad)}. If Orca is not installed, the Claude entries ` +
+    "cannot start; run-role reports the failed start and asks before running anything else.\n\n" +
+    "`/setup-pstack` writes the configured model list. On Codex, set the single-model roles to your Codex model slugs."
   );
 }
 
@@ -581,7 +620,7 @@ function main() {
   if (modelStamps === 0) console.log("ok: model-policy sections current");
 
   const strays = markdownFiles(skillsDir).flatMap((full) =>
-    strayModelSlugs(full.slice(repo.length + 1), readFileSync(full, "utf8"), models),
+    strayModelSlugs(relative(repo, full).split("\\").join("/"), readFileSync(full, "utf8"), models),
   );
   if (strays.length) {
     throw new Error(

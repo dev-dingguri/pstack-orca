@@ -1,5 +1,5 @@
 {
-  "name": "pstack-claude",
+  "name": "pstack-orca",
   "interface": {
     "displayName": "pstack"
   },
@@ -13,7 +13,9 @@
       "policy": {
         "installation": "AVAILABLE",
         "authentication": "ON_INSTALL",
-        "products": ["CODEX"]
+        "products": [
+          "CODEX"
+        ]
       },
       "category": "Developer Tools"
     }

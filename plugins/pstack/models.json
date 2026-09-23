@@ -1,38 +1,46 @@
 {
+  "providers": [
+    { "id": "claude", "label": "Claude", "host": "Claude Code" },
+    { "id": "codex", "label": "Codex", "host": "Codex" }
+  ],
   "singleRoleDefault": "claude-opus-5-5",
-  "panel": ["claude-opus-5-5", "claude-fable-5-1", "claude-sonnet-5"],
+  "panel": ["claude-opus-5-5", "gpt-5.6-sol", "claude-fable-5-1"],
   "available": [
-    { "label": "Opus 5.5", "slug": "claude-opus-5-5" },
-    { "label": "Opus 5", "slug": "claude-opus-5" },
-    { "label": "Opus 4.8", "slug": "claude-opus-4-8" },
-    { "label": "Opus 4.6", "slug": "claude-opus-4-6" },
-    { "label": "Fable 5.1", "slug": "claude-fable-5-1" },
-    { "label": "Sonnet 5", "slug": "claude-sonnet-5" },
-    { "label": "Sonnet 4.6", "slug": "claude-sonnet-4-6" },
-    { "label": "Haiku 4.5", "slug": "claude-haiku-4-5" }
+    { "label": "Opus 5.5", "slug": "claude-opus-5-5", "provider": "claude" },
+    { "label": "Opus 5", "slug": "claude-opus-5", "provider": "claude" },
+    { "label": "Opus 4.8", "slug": "claude-opus-4-8", "provider": "claude" },
+    { "label": "Opus 4.6", "slug": "claude-opus-4-6", "provider": "claude" },
+    { "label": "Fable 5.1", "slug": "claude-fable-5-1", "provider": "claude" },
+    { "label": "Sonnet 5", "slug": "claude-sonnet-5", "provider": "claude" },
+    { "label": "Sonnet 4.6", "slug": "claude-sonnet-4-6", "provider": "claude" },
+    { "label": "Haiku 4.5", "slug": "claude-haiku-4-5", "provider": "claude" },
+    { "label": "GPT-6 Astra", "slug": "gpt-6-astra", "provider": "codex" },
+    { "label": "GPT-5.6 Sol", "slug": "gpt-5.6-sol", "provider": "codex" },
+    { "label": "GPT-5.6 Terra", "slug": "gpt-5.6-terra", "provider": "codex" },
+    { "label": "GPT-5.6 Luna", "slug": "gpt-5.6-luna", "provider": "codex" }
   ],
   "roles": [
-    { "role": "feature, refactoring", "models": ["claude-opus-5-5"], "skill": "poteto-mode" },
-    { "role": "bug-fix", "models": ["claude-fable-5-1"], "skill": "poteto-mode" },
-    { "role": "perf-issue", "models": ["claude-fable-5-1"], "skill": "poteto-mode" },
-    { "role": "hillclimb", "models": ["claude-fable-5-1"], "skill": "poteto-mode" },
-    { "role": "judgment and prose", "models": ["claude-opus-5-5"], "skill": "poteto-mode" },
-    { "role": "strongest judgment", "models": ["claude-fable-5-1"], "skill": "poteto-mode" },
-    { "role": "how explorer", "models": ["claude-opus-5-5"], "skill": "how" },
-    { "role": "how explainer", "models": ["claude-opus-5-5"], "skill": "how" },
-    { "role": "why investigators", "models": ["claude-opus-5-5"], "skill": "why" },
-    { "role": "why synthesizer", "models": ["claude-opus-5-5"], "skill": "why" },
-    { "role": "reflect tooling", "models": ["claude-opus-5-5"], "skill": "reflect" },
-    { "role": "reflect judgment, divergent, synthesizer", "models": ["claude-opus-5-5"], "skill": "reflect" },
-    { "role": "arena runners", "models": "panel", "skill": "arena" },
-    { "role": "arena cross-judge pool", "models": "panel", "skill": "arena" },
-    { "role": "swarm workers", "models": ["claude-opus-5-5"], "skill": "swarm" },
-    { "role": "architect runners", "models": "panel", "skill": "architect" },
-    { "role": "interrogate reviewers", "models": "panel", "skill": "interrogate" }
+    { "role": "feature, refactoring", "models": ["claude-opus-5-5"], "skill": "poteto-mode", "mode": "execute" },
+    { "role": "bug-fix", "models": ["claude-fable-5-1"], "skill": "poteto-mode", "mode": "execute" },
+    { "role": "perf-issue", "models": ["claude-fable-5-1"], "skill": "poteto-mode", "mode": "execute" },
+    { "role": "hillclimb", "models": ["claude-fable-5-1"], "skill": "poteto-mode", "mode": "execute" },
+    { "role": "judgment and prose", "models": ["claude-opus-5-5"], "skill": "poteto-mode", "mode": "consult" },
+    { "role": "strongest judgment", "models": ["claude-fable-5-1"], "skill": "poteto-mode", "mode": "execute" },
+    { "role": "how explorer", "models": ["claude-opus-5-5"], "skill": "how", "mode": "consult" },
+    { "role": "how explainer", "models": ["claude-opus-5-5"], "skill": "how", "mode": "consult" },
+    { "role": "why investigators", "models": ["claude-opus-5-5"], "skill": "why", "mode": "consult" },
+    { "role": "why synthesizer", "models": ["claude-opus-5-5"], "skill": "why", "mode": "consult" },
+    { "role": "reflect tooling", "models": ["claude-opus-5-5"], "skill": "reflect", "mode": "consult" },
+    { "role": "reflect judgment, divergent, synthesizer", "models": ["claude-opus-5-5"], "skill": "reflect", "mode": "consult" },
+    { "role": "arena runners", "models": "panel", "skill": "arena", "mode": "execute" },
+    { "role": "arena cross-judge pool", "models": "panel", "skill": "arena", "mode": "consult" },
+    { "role": "swarm workers", "models": ["claude-opus-5-5"], "skill": "swarm", "mode": "execute" },
+    { "role": "architect runners", "models": "panel", "skill": "architect", "mode": "consult" },
+    { "role": "interrogate reviewers", "models": "panel", "skill": "interrogate", "mode": "consult" }
   ],
   "codex": {
     "singleRoleExample": "gpt-5.6-sol",
     "strongestRoleExample": "gpt-6-astra",
-    "panelQuad": ["gpt-6-astra", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"]
+    "panelQuad": ["gpt-6-astra", "claude-opus-5-5", "gpt-5.6-sol", "claude-fable-5-1"]
   }
 }

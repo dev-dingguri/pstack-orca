@@ -7,7 +7,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { loadModels, resolveModels, section } from "../tools/generate.mjs";
+import { loadModels, providerOf, resolveModels, section } from "../tools/generate.mjs";
 import { markdownFiles } from "../tools/validate-skills.mjs";
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
@@ -45,9 +45,22 @@ describe("models.json shape", () => {
     for (const role of resolved) expect(role.models).toEqual(raw.panel);
   });
 
+  test("every available model names a listed provider, every role a mode, and the panel spans providers", () => {
+    const providers = new Set(raw.providers.map((p) => p.id));
+    expect(providers.size).toBe(raw.providers.length);
+    for (const m of raw.available) expect(providers.has(m.provider)).toBe(true);
+    for (const role of raw.roles) expect(["consult", "execute"]).toContain(role.mode);
+    const panelProviders = new Set(raw.panel.map((slug) => providerOf(raw, slug)));
+    expect(panelProviders.size).toBeGreaterThan(1);
+    for (const role of raw.roles) {
+      if (role.models === "panel") continue;
+      for (const slug of role.models) expect(providerOf(raw, slug)).toBe(providerOf(raw, raw.singleRoleDefault));
+    }
+  });
+
   test("the file stays one row per entry so a role change is a one-line diff", () => {
     const text = readFileSync(join(repoRoot, "plugins/pstack/models.json"), "utf8");
-    const rows = raw.available.length + raw.roles.length;
+    const rows = raw.providers.length + raw.available.length + raw.roles.length;
     expect(text.split("\n").length).toBeLessThan(rows * 2);
     expect(text.match(/^\s*\{ "/gm)).toHaveLength(rows);
   });
