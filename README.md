@@ -2,7 +2,7 @@
 
 Lauren Tan's [pstack](https://github.com/cursor/plugins/tree/main/pstack) is an opinionated Cursor skill stack that improves agent outcomes. Michael Denyer's [pstack-claude](https://github.com/michael-denyer/pstack-claude) ports it to Claude Code, Codex and other agent harnesses. This fork adds what the port had to drop: a role can run on a model from another provider.
 
-Tell `poteto-mode` your goal and it will invoke the correct workflow for the task. It keeps your code concise, simple and verified. When a role's model belongs to another provider, the `run-role` skill launches it as a supervised [Orca](https://orca.dev) worker through the bundled `orca-delegate` skill; roles on the host provider stay native subagents.
+Tell `poteto-mode` your goal and it will invoke the correct workflow for the task. It keeps your code concise, simple and verified. When a role's model belongs to another provider, the `run-role` skill launches it as a supervised [Orca](https://www.onorca.dev/) worker through the bundled `orca-delegate` skill; roles on the host provider stay native subagents.
 
 ## Install
 
@@ -24,7 +24,7 @@ codex plugin marketplace add dev-dingguri/pstack-orca
 codex plugin add pstack@pstack-orca
 ```
 
-The plugin keeps the `pstack` name, so it replaces pstack-claude rather than installing beside it.
+The plugin keeps the `pstack` name and the `/pstack:*` skill names. Uninstall `pstack@pstack-claude` first; two installs would both register the same skills and hook.
 
 Run `setup-pstack` to change model defaults or turn automatic routing off. Every model entry is `slug@provider`; the default panel mixes Claude and Codex models, and single-model roles stay on the host. Cross-provider entries need Orca installed; a start that fails is reported and waits for your decision. The plugin installs the routing hook on Claude Code and Codex; Codex asks you to trust it through `/hooks` before it runs. In Claude Code, use `/pstack:setup-pstack`.
 

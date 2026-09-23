@@ -141,9 +141,19 @@ const rules = [
     phrase: "three dispatches through the **run-role** skill",
   },
   {
+    source: "pstack-orca architect overrides arena's runner role",
+    file: "arena/SKILL.md",
+    phrase: "resolve that role instead of `arena runners`",
+  },
+  {
+    source: "pstack-orca interrogate fallback is native-only",
+    file: "interrogate/SKILL.md",
+    phrase: "applies only to a native host-provider `Agent` call",
+  },
+  {
     source: "pstack-orca no silent fallback",
     file: "run-role/SKILL.md",
-    phrase: "Do not retry silently and do not fall back.",
+    phrase: "do not retry silently and do not fall back.",
   },
   {
     source: "pstack-orca setup records Orca without probing",

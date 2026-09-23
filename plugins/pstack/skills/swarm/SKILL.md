@@ -28,7 +28,7 @@ Open a todolist with one entry per phase before launching anything.
 
 ## Phase B: Fan out
 
-Spawn all N workers in one message through the **run-role** skill with role `swarm workers`: native entries get `subagent_type: "general-purpose"`, `run_in_background: true`, and the configured model; a cross-provider entry runs as an `execute` Orca worker in its assigned worktree. Claude Code subagents all run on this machine, so isolation comes from the worktree or output directory assigned in Phase A, not from a remote environment.
+Spawn all N workers in one message through the **run-role** skill with role `swarm workers`, one dispatch per worker on its configured entry and assigned worktree; native dispatches get `subagent_type: "general-purpose"` and `run_in_background: true`. Claude Code subagents all run on this machine, so isolation comes from the worktree or output directory assigned in Phase A, not from a remote environment.
 
 When a worker must start from a non-default branch, check that branch out in the worker's own worktree and name the worktree path in its brief.
 

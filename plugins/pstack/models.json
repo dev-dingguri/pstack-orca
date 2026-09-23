@@ -1,7 +1,7 @@
 {
   "providers": [
-    { "id": "claude", "label": "Claude", "host": "Claude Code" },
-    { "id": "codex", "label": "Codex", "host": "Codex" }
+    { "id": "claude", "label": "Claude", "host": "Claude Code", "singleRoleDefault": "claude-opus-5-5", "strongestRoleDefault": "claude-fable-5-1" },
+    { "id": "codex", "label": "Codex", "host": "Codex", "singleRoleDefault": "gpt-5.6-sol", "strongestRoleDefault": "gpt-6-astra" }
   ],
   "singleRoleDefault": "claude-opus-5-5",
   "panel": ["claude-opus-5-5", "gpt-5.6-sol", "claude-fable-5-1"],

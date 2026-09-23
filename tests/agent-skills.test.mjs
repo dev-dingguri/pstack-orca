@@ -346,6 +346,9 @@ describe("Codex model names", () => {
       expect(section).toContain(role);
     }
     expect(section).toContain("run-role");
+    expect(section).toContain("gpt-5.6-sol@codex");
     for (const slug of models.codex.panelQuad) expect(section).toContain(`${slug}@`);
+    expect(section).not.toContain("`how`");
+    expect(section).not.toContain("`reflect`");
   });
 });

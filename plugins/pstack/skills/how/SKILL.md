@@ -23,7 +23,7 @@ When in doubt, take the simple path.
 Decompose the question into 2 to 4 exploration angles, each a distinct slice of the subsystem. Spawn all explorers in a single message through the **run-role** skill with role `how explorer`; native entries use:
 
 - `subagent_type`: `general-purpose`
-- `model`: your configured how-explorer model (default in [Models](#models))
+- `model`: the slug of your configured how-explorer entry (default in [Models](#models))
 - `readonly`: `true`
 
 Each explorer gets the prompt in `references/explorer-prompt.md` with its angle filled in. Then go to Step 3.
@@ -33,7 +33,7 @@ Each explorer gets the prompt in `references/explorer-prompt.md` with its angle 
 Spawn one subagent through the **run-role** skill with role `how explainer` that explores and explains in one pass; a native entry uses:
 
 - `subagent_type`: `general-purpose`
-- `model`: your configured how-explainer model (default in [Models](#models))
+- `model`: the slug of your configured how-explainer entry (default in [Models](#models))
 - `readonly`: `true`
 
 Build its prompt from `references/explainer-prompt.md` without the explorer-findings section. Go to Step 4.
@@ -43,7 +43,7 @@ Build its prompt from `references/explainer-prompt.md` without the explorer-find
 Once all explorers have returned, spawn one subagent through the **run-role** skill with role `how explainer` to synthesize their findings into one explanation; a native entry uses:
 
 - `subagent_type`: `general-purpose`
-- `model`: your configured how-explainer model (default in [Models](#models))
+- `model`: the slug of your configured how-explainer entry (default in [Models](#models))
 - `readonly`: `true`
 
 Build its prompt from `references/explainer-prompt.md` with every explorer's findings filled in.

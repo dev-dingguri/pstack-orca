@@ -52,9 +52,16 @@ describe("models.json shape", () => {
     for (const role of raw.roles) expect(["consult", "execute"]).toContain(role.mode);
     const panelProviders = new Set(raw.panel.map((slug) => providerOf(raw, slug)));
     expect(panelProviders.size).toBeGreaterThan(1);
+    for (const p of raw.providers) {
+      expect(providerOf(raw, p.singleRoleDefault)).toBe(p.id);
+      expect(providerOf(raw, p.strongestRoleDefault)).toBe(p.id);
+      expect(p.singleRoleDefault).not.toBe(p.strongestRoleDefault);
+    }
+    const claude = raw.providers.find((p) => p.id === "claude");
+    expect(claude.singleRoleDefault).toBe(raw.singleRoleDefault);
     for (const role of raw.roles) {
       if (role.models === "panel") continue;
-      for (const slug of role.models) expect(providerOf(raw, slug)).toBe(providerOf(raw, raw.singleRoleDefault));
+      for (const slug of role.models) expect(providerOf(raw, slug)).toBe("claude");
     }
   });
 

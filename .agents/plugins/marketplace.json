@@ -13,9 +13,7 @@
       "policy": {
         "installation": "AVAILABLE",
         "authentication": "ON_INSTALL",
-        "products": [
-          "CODEX"
-        ]
+        "products": ["CODEX"]
       },
       "category": "Developer Tools"
     }

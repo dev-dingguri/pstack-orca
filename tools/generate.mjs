@@ -479,13 +479,38 @@ export function modelsSection(roles, models) {
 // The run-role skill's dispatch table: every role, the skill that owns it,
 // the Orca mode a cross-provider entry runs in, and the default entries.
 export function rolesSection(models) {
-  const rows = models.roles.map((r) => `| ${r.role} | ${r.skill} | ${r.mode} | ${tagList(models, r.models)} |`);
+  const strongest = new Set(strongestRoles(models).map((r) => r.role));
+  const rows = models.roles.map((r) => {
+    const tier = r.models.length === 1 ? (strongest.has(r.role) ? "strongest" : "single") : "panel";
+    return `| ${r.role} | ${r.skill} | ${r.mode} | ${tier} | ${tagList(models, r.models)} |`;
+  });
+  const providers = models.providers.map(
+    (p) => `| ${code(p.id)} | ${p.host} | ${code(tag(models, p.singleRoleDefault))} | ${code(tag(models, p.strongestRoleDefault))} |`,
+  );
   return (
     "Stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). " +
-    "A matching role line in the override sheet replaces the default entries; the mode is fixed per role.\n\n" +
-    "| Role | Skill | Mode | Default entries |\n| --- | --- | --- | --- |\n" +
-    rows.join("\n")
+    "A matching role line in the override sheet replaces the default entries; the mode is fixed per role. " +
+    "The default entries of a `single` or `strongest` role are the `claude` host's; on another host, a role " +
+    "with no sheet line uses that host provider's single-role or strongest-role default from the Providers table. " +
+    "A `panel` role keeps its mixed default on every host.\n\n" +
+    "| Role | Skill | Mode | Tier | Default entries |\n| --- | --- | --- | --- | --- |\n" +
+    rows.join("\n") +
+    "\n\n### Providers\n\n" +
+    "| Provider | Native host | Single-role default | Strongest-role default |\n| --- | --- | --- | --- |\n" +
+    providers.join("\n")
   );
+}
+
+// Single-model roles that default to a stronger model than the single-role
+// default; every host substitutes its own strongest model for them.
+export function strongestRoles(models) {
+  return models.roles.filter((r) => r.models.length === 1 && r.models[0] !== models.singleRoleDefault);
+}
+
+// The skills whose roles run the mixed-provider panel.
+export function panelSkills(models) {
+  const onPanel = (r) => r.models === "panel" || (Array.isArray(r.models) && r.models.join() === models.panel.join());
+  return [...new Set(models.roles.filter(onPanel).map((r) => r.skill))];
 }
 
 export function setupModelsSection(models) {
@@ -521,31 +546,39 @@ export function overrideSheetBlock(models) {
 }
 
 export function codexModelNamesSection(models) {
-  const strongest = models.roles.filter(
-    (r) => r.models.length === 1 && r.models[0] !== models.singleRoleDefault,
-  );
+  const strongest = strongestRoles(models);
+  const codex = models.providers.find((p) => p.id === "codex");
+  const panels = panelSkills(models).map(code).join(", ");
   return (
     "Skills name defaults as `slug@provider` entries (a single-role default for code/prose/judgment plus a " +
     "mixed-provider panel; each model-consuming skill lists its own in a Models section). On Codex the host " +
     "provider is `codex`: a `codex` entry runs natively through `spawn_agent`, and a `claude` entry runs as an " +
     "Orca worker running Claude Code, dispatched by the `run-role` skill through the bundled `orca-delegate` " +
-    "skill. Keep single-model roles on the host so the caller is not blocked on a worker:\n\n" +
-    `- Single-model roles: your primary Codex model (for example ${code(models.codex.singleRoleExample)}).\n` +
+    "skill. Single-model roles stay on the host so the caller is not blocked on a worker; run-role applies " +
+    "these defaults to any single-model role with no sheet line:\n\n" +
+    `- Single-model roles: the Codex single-role default ${code(tag(models, codex.singleRoleDefault))}.\n` +
     `- Roles that default to the strongest Claude model (${strongest.map((r) => code(r.role)).join(", ")}): ` +
-    `your strongest Codex model (for example ${code(models.codex.strongestRoleExample)}).\n` +
-    "- Mixed-provider panels (`arena`, `architect`, `interrogate`, `how` critics, `reflect`): the adversarial " +
-    "signal comes from model diversity, so keep entries from both providers. A good default quad " +
-    `on Codex is ${tagList(models, models.codex.panelQuad)}. If Orca is not installed, the Claude entries ` +
-    "cannot start; run-role reports the failed start and asks before running anything else.\n\n" +
-    "`/setup-pstack` writes the configured model list. On Codex, set the single-model roles to your Codex model slugs."
+    `the Codex strongest-role default ${code(tag(models, codex.strongestRoleDefault))}.\n` +
+    `- Mixed-provider panels (${panels}): the adversarial signal comes from model diversity, so keep entries ` +
+    `from both providers. The default panel is ${tagList(models, models.panel)}; a good quad on Codex is ` +
+    `${tagList(models, models.codex.panelQuad)}. If Orca is not installed, the Claude entries cannot start; ` +
+    "run-role reports each failed start and asks how to replace that entry.\n\n" +
+    "`/setup-pstack` writes the configured model list. On Codex, write single-model roles as Codex entries."
   );
 }
 
-// After stamping, no claude-* model slug may survive in skill prose outside
-// the regions the generator owns in that file.
-const SLUG_RE = /claude-(?:opus|fable|sonnet|haiku)[0-9a-z.-]*/;
+// After stamping, no model slug may survive in skill prose outside the
+// regions the generator owns in that file: neither a claude-* family slug nor
+// any slug models.json lists for any provider.
+const CLAUDE_SLUG_RE = /claude-(?:opus|fable|sonnet|haiku)[0-9a-z.-]*/;
+
+export function slugPattern(models) {
+  const escaped = models.available.map((m) => m.slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  return new RegExp(`${CLAUDE_SLUG_RE.source}|(?<![0-9a-z.-])(?:${escaped.join("|")})(?![0-9a-z.-])`);
+}
 
 export function strayModelSlugs(file, text, models) {
+  const SLUG_RE = slugPattern(models);
   const lines = text.split("\n");
   const owned = regions(models)
     .filter((r) => r.file === file)

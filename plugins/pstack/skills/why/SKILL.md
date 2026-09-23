@@ -76,11 +76,11 @@ Source control is always available through git and `gh`. For the other six, clas
 
 Aim for a complete **coverage map**, not a minimal one. Document the null, don't skip the search.
 
-Launch all matching investigators in a single message through the **run-role** skill with role `why investigators` so they run concurrently. Don't ask one agent to cover multiple MCPs. A cross-provider entry runs as a `consult` Orca worker; give it only an evidence category its own tools can reach, because the host's MCPs do not travel with it.
+Launch all matching investigators in a single message through the **run-role** skill with role `why investigators` so they run concurrently. Don't ask one agent to cover multiple MCPs. Give a cross-provider entry only an evidence category its own tools can reach, because the host's MCPs do not travel with an Orca worker.
 
 Subagent config (each native entry):
 - `subagent_type`: `general-purpose`
-- `model`: your configured why-investigators model (default in [Models](#models))
+- `model`: the slug of your configured why-investigators entry (default in [Models](#models))
 - `readonly`: `false` (agent mode). **Do not use readonly/Ask mode.** It strips MCP access, which disables MCP-backed investigators entirely. Investigators still shouldn't write anything.
 
 Each investigator gets:
@@ -124,7 +124,7 @@ If your scope assessment suggests a single-commit trivial target where the PR de
 Spawn one synthesizer through the **run-role** skill with role `why synthesizer`; a native entry uses:
 
 - `subagent_type`: `general-purpose`
-- `model`: your configured why-synthesizer model (default in [Models](#models))
+- `model`: the slug of your configured why-synthesizer entry (default in [Models](#models))
 - `readonly`: `false` (agent mode). The synthesizer's quality check spot-verifies citations, which can require MCP access. Readonly/Ask mode strips MCPs and defeats that.
 
 The synthesizer gets:

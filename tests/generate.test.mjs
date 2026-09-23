@@ -101,6 +101,12 @@ describe("strayModelSlugs", () => {
     ]);
   });
 
+  test("a Codex slug from models.json outside an owned region is a stray, an unlisted one is not", () => {
+    const file = "plugins/pstack/skills/other/SKILL.md";
+    expect(strayModelSlugs(file, "# o\n\nPrefer gpt-5.6-sol here.\n", models)).toHaveLength(1);
+    expect(strayModelSlugs(file, "# o\n\nwe renamed `gpt-4` to `gpt-4o`\n", models)).toEqual([]);
+  });
+
   test("a slug outside the owned region of an owned file is a stray", () => {
     const file = "plugins/pstack/skills/how/SKILL.md";
     const text = applyRegions(file, "# how\n\n## Models\n\nx\n\n## Setup\n\nPrefer claude-sonnet-4-6.\n", models);

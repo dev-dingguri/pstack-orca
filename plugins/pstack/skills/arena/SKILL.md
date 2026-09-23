@@ -26,12 +26,12 @@ The N candidates will receive the same prompt, so the prompt is the contract.
 
 1. State the artifact each candidate is producing.
 2. Derive the rubric. State what success looks like for *this* task, then turn it into 3-6 concrete gradeable criteria. The rubric is the picker's tool in Phase D; candidates only see the task.
-3. Pick the runners. Use `arena runners` from `~/.claude/pstack-models.md` when present. Otherwise run one each on the defaults in [Models](#models). Spawn more when the arena covers multiple design directions. Same model N times when the work is generation-bound rather than judgment-sensitive. Each entry is `slug@provider`; the **run-role** skill runs it natively or as an Orca worker.
+3. Pick the runners. Use `arena runners` from `~/.claude/pstack-models.md` when present. Otherwise run one each on the defaults in [Models](#models). Spawn more when the arena covers multiple design directions. Same model N times when the work is generation-bound rather than judgment-sensitive. Each entry is `slug@provider`; the **run-role** skill runs it natively or as an Orca worker. When the calling skill names another role for the runners (architect passes `architect runners`), resolve that role instead of `arena runners`, here and in Phase B.
 4. Assign output paths. Each candidate writes to its own location (a git worktree where possible, otherwise `/tmp/arena-<slug>/candidate-<n>/`), per the **separate-before-serializing-shared-state** principle skill.
 
 ## Phase B: Fan out
 
-Spawn all N candidates in one message through the **run-role** skill with role `arena runners` (native entries get `run_in_background: true`; cross-provider entries run as `execute` Orca workers in their own output path), each with the task, the path to the shared grounding, its own output path, and instructions to produce both the artifact and a short rationale.
+Spawn all N candidates in one message through the **run-role** skill with role `arena runners` (or the role the calling skill named), one dispatch per candidate on its own output path, each with the task, the path to the shared grounding, its own output path, and instructions to produce both the artifact and a short rationale.
 
 Each rationale names the alternatives the candidate considered and what it rejected.
 
@@ -39,7 +39,7 @@ If a candidate fails to produce output, proceed with N-1 and note the dropout in
 
 ## Phase C: Cross-judge
 
-After all Phase B candidates complete, choose one model from the `arena cross-judge pool` in `~/.claude/pstack-models.md` when present. Otherwise choose from the runner defaults in [Models](#models). Prefer a different model family from the parent's. Spawn one readonly judge on that model through the **run-role** skill with role `arena cross-judge pool` (a cross-provider entry runs as a `consult` Orca worker). It sees the rubric and the candidates by path label, scores each criterion, and recommends a base with rationale. It runs in parallel with the parent's reading in Phase D, not with the candidates themselves. Don't spawn the judge while candidates are still writing.
+After all Phase B candidates complete, choose one model from the `arena cross-judge pool` in `~/.claude/pstack-models.md` when present. Otherwise choose from the runner defaults in [Models](#models). Prefer a different model family from the parent's. Spawn one readonly judge on that model through the **run-role** skill with role `arena cross-judge pool`, one dispatch on the chosen entry. It sees the rubric and the candidates by path label, scores each criterion, and recommends a base with rationale. It runs in parallel with the parent's reading in Phase D, not with the candidates themselves. Don't spawn the judge while candidates are still writing.
 
 ## Phase D: Pick a base
 

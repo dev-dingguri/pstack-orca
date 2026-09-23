@@ -29,7 +29,7 @@ It covers the three layouts (flat `<id>.jsonl`, nested `<id>/<id>.jsonl`, subage
 
 ### 2. Spawn three reviewers in parallel
 
-One message, three dispatches through the **run-role** skill (roles `reflect judgment, divergent, synthesizer` and `reflect tooling`); a native entry is an `Agent` call with `subagent_type: "general-purpose"` and an explicit `model:`, and a cross-provider entry is a `consult` Orca worker. Reviewers need MCP access for context lookups (tickets, chat threads, observability traces referenced in the transcript); pick a subagent_type that retains MCP access. The prompt forbids file writes; the parent applies edits.
+One message, three dispatches through the **run-role** skill (roles `reflect judgment, divergent, synthesizer` and `reflect tooling`); a native dispatch is an `Agent` call with `subagent_type: "general-purpose"` and an explicit `model:` (the entry's slug), and a cross-provider dispatch is an Orca worker whose contract permits the result file. Reviewers need MCP access for context lookups (tickets, chat threads, observability traces referenced in the transcript); pick a subagent_type that retains MCP access. The prompt forbids file writes; the parent applies edits.
 
 | Lens | `model` | Prompt template |
 |---|---|---|

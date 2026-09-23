@@ -72,6 +72,19 @@ jobs:
       - name: Test
         run: bun test orch watch-pr
 
+  contract-helper:
+    name: Bundled contract helper
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: plugins/pstack/skills/orca-delegate/scripts
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Run the prepare_contract tests
+        run: python3 -m unittest -v test_prepare_contract
+
   shellcheck:
     name: Shell scripts
     runs-on: ubuntu-latest

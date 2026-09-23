@@ -31,7 +31,7 @@ Skip Phase A only when the work is genuinely greenfield with no surrounding syst
 
 Run the **arena** skill with the design-sketch task and the Phase A grounding artifacts. Pass `references/runner-prompt.md` as each runner's prompt. Each candidate produces a design package shaped per `references/rationale-template.md`.
 
-Use your configured architect runners (defaults in [Models](#models)). Tell Arena to resolve its runners through the **run-role** skill with role `architect runners`, so a cross-provider entry sketches as a `consult` Orca worker instead of an arena candidate that edits source.
+Use your configured architect runners (defaults in [Models](#models)). Tell Arena to resolve its runners through the **run-role** skill with role `architect runners`, so each candidate runs under that role's entries and mode and writes only its design package.
 
 Design it twice. Require at least two structurally distinct candidates before synthesis, even when the first looks sufficient. This is the **exhaust-the-design-space** principle skill made concrete. Whole-shape alternatives, not point fixes inside one shape.
 
