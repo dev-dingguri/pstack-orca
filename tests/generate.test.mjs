@@ -114,6 +114,20 @@ describe("strayModelSlugs", () => {
     expect(strays).toHaveLength(1);
     expect(strays[0]).toContain("Prefer claude-sonnet-4-6.");
   });
+
+  test("a listed Codex slug followed by sentence punctuation is a stray", () => {
+    const file = "plugins/pstack/skills/other/SKILL.md";
+    for (const text of ["Prefer gpt-5.6-sol.", "Prefer gpt-6-astra. Then review.", "Prefer gpt-5.6-sol..."]) {
+      expect(strayModelSlugs(file, text, models)).toEqual([`${file}:1: ${text}`]);
+    }
+  });
+
+  test("a listed Codex slug inside a longer model name is not a stray", () => {
+    const file = "plugins/pstack/skills/other/SKILL.md";
+    for (const text of ["gpt-5.6-sol-mini", "gpt-5.6-sol.preview", "gpt-5.6-sol.1", "custom-gpt-5.6-sol"]) {
+      expect(strayModelSlugs(file, text, models)).toEqual([]);
+    }
+  });
 });
 
 describe("stampVersion", () => {

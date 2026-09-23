@@ -490,8 +490,9 @@ export function rolesSection(models) {
   return (
     "Stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). " +
     "A matching role line in the override sheet replaces the default entries; the mode is fixed per role. " +
-    "The default entries of a `single` or `strongest` role are the `claude` host's; on another host, a role " +
-    "with no sheet line uses that host provider's single-role or strongest-role default from the Providers table. " +
+    "The default entries of a `single` or `strongest` role are the `claude` host's. Without a sheet line, " +
+    "substitute the host provider's single-role or strongest-role default only when that provider has a row in the Providers table. " +
+    "If no native provider is known or no row exists, keep the Roles table entries and route them through Orca. " +
     "A `panel` role keeps its mixed default on every host.\n\n" +
     "| Role | Skill | Mode | Tier | Default entries |\n| --- | --- | --- | --- | --- |\n" +
     rows.join("\n") +
@@ -574,7 +575,7 @@ const CLAUDE_SLUG_RE = /claude-(?:opus|fable|sonnet|haiku)[0-9a-z.-]*/;
 
 export function slugPattern(models) {
   const escaped = models.available.map((m) => m.slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  return new RegExp(`${CLAUDE_SLUG_RE.source}|(?<![0-9a-z.-])(?:${escaped.join("|")})(?![0-9a-z.-])`);
+  return new RegExp(`${CLAUDE_SLUG_RE.source}|(?<![0-9a-z.-])(?:${escaped.join("|")})(?![0-9a-z-]|\\.[0-9a-z])`);
 }
 
 export function strayModelSlugs(file, text, models) {

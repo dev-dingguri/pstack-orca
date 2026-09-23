@@ -21,7 +21,7 @@ The calling skill hands over a list of dispatches. Each dispatch is one agent to
 
 ### 1. Resolve the entries
 
-Read the role line from the runtime's override sheet (`~/.claude/pstack-models.md` on Claude Code, `~/.codex/pstack-models.md` on Codex). Without a line, use the default entries in the [Roles](#roles) table; on a host other than `claude`, a `single` or `strongest` role without a line uses the host provider's default from the Providers table instead.
+Read the role line from the runtime's override sheet (`~/.claude/pstack-models.md` on Claude Code, `~/.codex/pstack-models.md` on Codex). Without a line, use the default entries in the [Roles](#roles) table. For a `single` or `strongest` role, substitute the host provider's default only when that provider has a row in the Providers table. If no native provider is known or no row exists, keep the Roles table entries and route them through Orca as step 2 prescribes.
 
 Each entry is one of:
 
@@ -67,7 +67,7 @@ Native results arrive in the call's response. For an Orca worker, match the comp
 
 ## Roles
 
-Stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). A matching role line in the override sheet replaces the default entries; the mode is fixed per role. The default entries of a `single` or `strongest` role are the `claude` host's; on another host, a role with no sheet line uses that host provider's single-role or strongest-role default from the Providers table. A `panel` role keeps its mixed default on every host.
+Stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). A matching role line in the override sheet replaces the default entries; the mode is fixed per role. The default entries of a `single` or `strongest` role are the `claude` host's. Without a sheet line, substitute the host provider's single-role or strongest-role default only when that provider has a row in the Providers table. If no native provider is known or no row exists, keep the Roles table entries and route them through Orca. A `panel` role keeps its mixed default on every host.
 
 | Role | Skill | Mode | Tier | Default entries |
 | --- | --- | --- | --- | --- |
