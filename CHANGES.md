@@ -2,6 +2,14 @@
 
 This port applies the Cursor → Claude Code substitutions in skill bodies. Earlier drafts left them flagged; this revision resolves them. A later pass added a Codex build that shares the same skills; see [Codex port](#codex-port) below.
 
+## 0.11.0 - use one cross-provider reviewer by default
+
+- `architect` now uses one designer followed by a reviewer from the other provider. `interrogate` selects one reviewer relative to the actual author. Explicit requests and model overrides can still select multiple reviewers. Existing lead judgment and finding categories remain unchanged.
+- Ordinary Codex roles now use `gpt-6-sol`; difficult roles use `gpt-6-astra`. Claude defaults remain `claude-opus-5-5` and `claude-fable-5-1`. Ordinary work requests `high` effort, and difficult work requests `xhigh`. Dispatches disclose unsupported or unconfirmed effort settings.
+- `arena` compares one candidate per provider when explicitly requested. The setup template preserves dynamic reviewer selection instead of writing a fixed reviewer panel.
+- `orca-delegate` uses the installed `orca-cli` and `orchestration` skills for executable selection and guide loading. Internal agent communication defaults to English, while user-facing output follows the requested language.
+- Dispatch fixes preserve defaults for unknown hosts and detect model names followed by sentence punctuation. Rejected reviewer launches no longer silently substitute a model.
+
 ## 0.10.0 - run cross-provider roles as Orca workers
 
 This fork of [pstack-claude](https://github.com/michael-denyer/pstack-claude) restores the original pstack's per-role provider choice on Claude Code and Codex. Everything below is a deliberate local fork. Preserve it during upstream merges.
