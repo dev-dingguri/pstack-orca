@@ -7,6 +7,20 @@ description: Cut AI tells from any writing. Must always apply.
 
 Edit text to remove AI patterns.
 
+## Select language guidance
+
+Keep this skill as the entry point for writing checks. Select guidance by the language of the text being written or edited, not the language of the conversation.
+
+Look in the current session's skill catalog for an available `unslop-<language>` candidate. Read its description and instructions before selecting it. The name alone does not establish that it applies: both the language and the task must match its scope.
+
+When a candidate applies, use its editing process and language rules for that text instead of the process and pattern list below. Preserve user instructions and project writing requirements. For mixed-language text, apply each selected skill only to the relevant passages.
+
+For example, an external `unslop-ko` limited to Korean document editing takes precedence for that editing task, but not for ordinary Korean conversation. This skill's always-apply rule does not expand another skill's scope.
+
+If no candidate is available or applicable, use the process below and only the patterns relevant to the text's language. Do not apply English vocabulary or grammar checks mechanically to other languages.
+
+Language-specific skills are optional external extensions, not bundled dependencies. Resolve them through the session's catalog without fixed installation paths. Do not install a missing skill or require it to continue. Keep existing numbered rules stable for callers that cite them.
+
 ## Process
 
 1. Scan for the patterns below.

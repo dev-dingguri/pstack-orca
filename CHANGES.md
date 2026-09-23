@@ -2,6 +2,11 @@
 
 This port applies the Cursor → Claude Code substitutions in skill bodies. Earlier drafts left them flagged; this revision resolves them. A later pass added a Codex build that shares the same skills; see [Codex port](#codex-port) below.
 
+## 0.11.3 - prefer applicable language-specific writing skills
+
+- `unslop` remains the shared entry point and selects an available external `unslop-<language>` only when its language and task scope match. A document-editing skill does not become an always-on conversation rule.
+- Missing or inapplicable extensions fall back to the relevant built-in patterns. Extensions are optional, require no fixed installation path, and are not installed automatically. Existing callers and numbered rules remain unchanged.
+
 ## 0.11.2 - separate Orca worktrees from agent execution
 
 - Same-provider subagents remain native when the user asks for an Orca worktree. Worktree creation does not select a terminal agent, supervised Orca worker, or ownership handoff.
