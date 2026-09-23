@@ -17,15 +17,20 @@ const models = loadModels();
 const available = new Set(models.available.map((m) => m.slug));
 
 describe("models.json shape", () => {
-  test("default setup preserves dynamic cross-review instead of freezing a reviewer panel", () => {
+  test("design candidates and reviewers run the one-per-provider panel", () => {
     const sheet = overrideSheetBlock(models);
     const assignments = sheet.split("\n").filter((line) => /^[a-z][^:]*: /.test(line));
-    expect(assignments.some((line) => line.startsWith("interrogate reviewers:"))).toBe(false);
-    expect(models.roles.find((role) => role.role === "interrogate reviewers").selection).toBe("cross-review");
-    expect(rolesSection(models)).toContain("| interrogate reviewers | interrogate | consult | cross-review |");
-    expect(panelSkills(models)).toEqual(["arena"]);
-    expect(models.roles.find((role) => role.role === "architect runners").models).toHaveLength(1);
+    const panelLine = models.panel.map((slug) => `${slug}@${providerOf(models, slug)}`).join(", ");
+    for (const role of ["architect runners", "interrogate reviewers", "arena runners"]) {
+      expect(assignments).toContain(`${role}: ${panelLine}`);
+      expect(raw.roles.find((r) => r.role === role).models).toBe("panel");
+      expect(rolesSection(models)).toContain(`| ${role} | `);
+      expect(rolesSection(models)).toMatch(new RegExp(`\\| ${role} \\| \\w+ \\| \\w+ \\| panel \\|`));
+    }
+    for (const role of raw.roles) expect(role.selection).toBeUndefined();
+    expect(panelSkills(models).sort()).toEqual(["architect", "arena", "interrogate"]);
     expect(models.panel.map((slug) => providerOf(models, slug)).sort()).toEqual(["claude", "codex"]);
+    expect(models.panel).toHaveLength(2);
     expect(models.effort).toEqual({ single: "high", strongest: "xhigh" });
   });
   test("available slugs are unique and the defaults are among them", () => {

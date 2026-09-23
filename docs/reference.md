@@ -21,7 +21,7 @@ Find each skill's instructions in the [skills tree](../plugins/pstack/skills/).
 | `/why` | investigate why something was built this way (parallel multi-MCP evidence) |
 | `/architect` | settle types and module shape before writing code that crosses a function boundary |
 | `/arena` | run N parallel attempts at the same task and pick the best parts |
-| `/interrogate` | have an independent reviewer from the other provider challenge a diff |
+| `/interrogate` | have one reviewer per provider try to break a diff |
 | `/automate-me` | draft your own personal -mode skill from recent transcripts |
 | `/reflect` | capture a long task's lessons as a skill edit |
 | `/tdd` | fix a bug by writing the failing test first, then the fix |

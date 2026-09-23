@@ -381,8 +381,8 @@ export function regions(models) {
     {
       file: skillFile("interrogate"),
       name: "reviewer table",
-      locate: tableRows("| Provider | Eligible default |", "| "),
-      render: () => reviewers.map((m) => `| ${code(providerOf(models, m))} | ${code(tag(models, m))} |`),
+      locate: tableRows("| Subagent | Default model |", "| Reviewer "),
+      render: () => reviewers.map((m, i) => `| Reviewer ${String.fromCharCode(65 + i)} | ${code(tag(models, m))} |`),
     },
     {
       file: runRole,
@@ -481,7 +481,7 @@ export function modelsSection(roles, models) {
 export function rolesSection(models) {
   const strongest = new Set(strongestRoles(models).map((r) => r.role));
   const rows = models.roles.map((r) => {
-    const tier = r.selection === "cross-review" ? "cross-review" : r.models.length === 1 ? (strongest.has(r.role) ? "strongest" : "single") : "panel";
+    const tier = r.models.length === 1 ? (strongest.has(r.role) ? "strongest" : "single") : "panel";
     return `| ${r.role} | ${r.skill} | ${r.mode} | ${tier} | ${tagList(models, r.models)} |`;
   });
   const providers = models.providers.map(
@@ -493,7 +493,8 @@ export function rolesSection(models) {
     "The default entries of a `single` or `strongest` role are the `claude` host's. Without a sheet line, " +
     "substitute the host provider's single-role or strongest-role default only when that provider has a row in the Providers table. " +
     "If no native provider is known or no row exists, keep the Roles table entries and route them through Orca. " +
-    "A `panel` role keeps its mixed default on every host. A `cross-review` role selects one eligible provider opposite the actual author.\n\n" +
+    "A `panel` role keeps its mixed default on every host and runs one agent per entry; " +
+    "a `strongest` task swaps each entry for its provider's strongest-role default without adding agents.\n\n" +
     `| Task tier | Default effort |\n| --- | --- |\n| single | ${code(models.effort.single)} |\n| strongest | ${code(models.effort.strongest)} |\n\n` +
     "| Role | Skill | Mode | Tier | Default entries |\n| --- | --- | --- | --- | --- |\n" +
     rows.join("\n") +
@@ -511,7 +512,7 @@ export function strongestRoles(models) {
 
 // The skills whose roles run the mixed-provider panel.
 export function panelSkills(models) {
-  const onPanel = (r) => r.selection !== "cross-review" && (r.models === "panel" || (Array.isArray(r.models) && r.models.join() === models.panel.join()));
+  const onPanel = (r) => r.models === "panel" || (Array.isArray(r.models) && r.models.join() === models.panel.join());
   return [...new Set(models.roles.filter(onPanel).map((r) => r.skill))];
 }
 
@@ -531,9 +532,7 @@ export function setupModelsSection(models) {
 // The override sheet the setup skill writes for users. The preamble is fixed;
 // the role rows come from models.json.
 export function overrideSheetBlock(models) {
-  const rows = models.roles.map((r) => r.selection === "cross-review"
-    ? `<!-- ${r.role}: omit this role to select one provider opposite the author. -->`
-    : `${r.role}: ${r.models.map((m) => tag(models, m)).join(", ")}`).join("\n");
+  const rows = models.roles.map((r) => `${r.role}: ${r.models.map((m) => tag(models, m)).join(", ")}`).join("\n");
   return (
     "# pstack model configuration\n\n" +
     "Per-role model overrides for pstack skills. Each pstack SKILL.md names its defaults in a Models section; " +
@@ -564,9 +563,9 @@ export function codexModelNamesSection(models) {
     `- Roles that default to the strongest Claude model (${strongest.map((r) => code(r.role)).join(", ")}): ` +
     `the Codex strongest-role default ${code(tag(models, codex.strongestRoleDefault))}.\n` +
     `- Mixed-provider panels (${panels}): the adversarial signal comes from model diversity, so keep entries ` +
-    `from both providers. The default candidate pair is ${tagList(models, models.panel)}. ` +
-    "Architect uses one designer followed by interrogate; interrogate defaults to one reviewer from the provider opposite the actual author. " +
-    `Ordinary work uses ${code(models.effort.single)} effort; difficult work uses ${code(models.effort.strongest)} and the selected provider's strongest-role default. ` +
+    `from both providers. The default panel is ${tagList(models, models.panel)}, one agent per entry: ` +
+    "arena candidates, architect design candidates, and interrogate reviewers. " +
+    `Ordinary work uses ${code(models.effort.single)} effort; difficult work uses ${code(models.effort.strongest)} and each provider's strongest-role default. ` +
     "If Orca is not installed, the Claude entries cannot start; " +
     "run-role reports each failed start and asks how to replace that entry.\n\n" +
     "`/setup-pstack` writes the configured model list. On Codex, write single-model roles as Codex entries."

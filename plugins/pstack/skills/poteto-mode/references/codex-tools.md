@@ -45,7 +45,7 @@ Skills name defaults as `slug@provider` entries (a single-role default for code/
 
 - Single-model roles: the Codex single-role default `gpt-6-sol@codex`.
 - Roles that default to the strongest Claude model (`bug-fix`, `perf-issue`, `hillclimb`, `strongest judgment`): the Codex strongest-role default `gpt-6-astra@codex`.
-- Mixed-provider panels (`arena`): the adversarial signal comes from model diversity, so keep entries from both providers. The default candidate pair is `claude-opus-5-5@claude`, `gpt-6-sol@codex`. Architect uses one designer followed by interrogate; interrogate defaults to one reviewer from the provider opposite the actual author. Ordinary work uses `high` effort; difficult work uses `xhigh` and the selected provider's strongest-role default. If Orca is not installed, the Claude entries cannot start; run-role reports each failed start and asks how to replace that entry.
+- Mixed-provider panels (`arena`, `architect`, `interrogate`): the adversarial signal comes from model diversity, so keep entries from both providers. The default panel is `claude-opus-5-5@claude`, `gpt-6-sol@codex`, one agent per entry: arena candidates, architect design candidates, and interrogate reviewers. Ordinary work uses `high` effort; difficult work uses `xhigh` and each provider's strongest-role default. If Orca is not installed, the Claude entries cannot start; run-role reports each failed start and asks how to replace that entry.
 
 `/setup-pstack` writes the configured model list. On Codex, write single-model roles as Codex entries.
 
@@ -72,7 +72,7 @@ Affected skill entry points and the optional Codex slash stubs point here. Most 
 
 | Skill | On Codex |
 |-------|----------|
-| `interrogate` | Default to one reviewer opposite the actual author's provider through `run-role`. A `codex` entry uses `spawn_agent`; a `claude` entry uses Orca. Multiple reviewers require an explicit request or override. |
+| `interrogate` | Reviewers dispatch through `run-role`, one per panel entry: a `codex` entry maps the `subagent_type`/`model`/`readonly` fields to `spawn_agent`; a `claude` entry runs as an Orca worker. Keep the panel mixed. |
 | `setup-pstack` | The skill's Other runtimes table names the Codex sheet path and how it loads. Write single-model roles as Codex entries (see Model names above) and keep the panel roles mixed. The role rows are identical. |
 | `run-role` | The host provider is `codex`. Native dispatches use `spawn_agent` with supported `reasoning_effort`; `claude` entries use Orca workers with model and effort. Follow run-role's disclosure rule if the selected effort cannot be confirmed. |
 | `no-comments` | There is no `comment-sicko` subagent type; see Subagent policy above. |

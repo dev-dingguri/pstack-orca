@@ -17,7 +17,7 @@ The calling skill hands over a list of dispatches. Each dispatch is one agent to
 - The entry to run it on, chosen by the caller from the role's resolved entries (step 1). A caller may repeat one entry (`how` runs two to four explorers on the one `how explorer` entry; `swarm` runs N workers), map entries one to one (a reviewer per `interrogate reviewers` entry), or pick a single entry (arena's cross-judge).
 - The brief: the task, file pointers rather than inlined context, and what to report. The calling skill writes it. Where the caller assigns an output location per agent (arena candidates, swarm workers, architect design packages), the brief names it.
 - Whether the caller is following poteto-mode for this task. Reading the skill to discuss or edit it does not activate it.
-- The actual author's model and provider for a review, when known, plus the task difficulty (`single` for ordinary work, `strongest` for difficult design, complex root-cause analysis, or consequential review). Record the author from the producing dispatch, not from the coordinator's provider. If authorship is unknown or spans providers, use the current working model's provider and disclose that fallback.
+- The task difficulty: `single` for ordinary work, `strongest` for difficult design, complex root-cause analysis, or consequential review. A change that is hard to reverse (a schema or data migration, a public API or config format, a module rewrite) is `strongest`.
 
 Use English by default for briefs, questions, replies, status updates, and results exchanged between agents, for both native and Orca dispatches. State this language rule in each brief. Use another language when explicitly requested or needed for the task, and preserve quoted source text. Keep user-facing deliverables in the user's requested language; a Korean user conversation alone does not change the language of internal coordination.
 
@@ -40,11 +40,9 @@ When inactive, do not add a poteto-mode activation instruction. This records the
 
 Read the role line from the runtime's override sheet (`~/.claude/pstack-models.md` on Claude Code, `~/.codex/pstack-models.md` on Codex). Without a line, use the default entries in the [Roles](#roles) table. For a `single` or `strongest` role, substitute the host provider's default only when that provider has a row in the Providers table. If no native provider is known or no row exists, keep the Roles table entries and route them through Orca as step 2 prescribes.
 
-An explicit model or reviewer-count request for this invocation takes precedence over the sheet. Resolve any requested candidate comparison before preparing dispatches; the ordinary provider pair supplies two candidates when no specific models were requested. Keep the role's mode unchanged. A reviewer pool or candidate pair is not permission to fan out without the calling skill's request.
+An explicit model or agent-count request for this invocation takes precedence over the sheet. Keep the role's mode unchanged. A `panel` role runs one agent per entry, so the panel length sets the count; more agents need an explicit request or a longer override list.
 
-For a `cross-review` role with no override, resolve exactly one entry from the other provider relative to the actual author: `claude` for a `codex` author, `codex` for a `claude` author. Use that provider's single-role or strongest-role default for the task difficulty. The table lists eligible defaults, not simultaneous dispatches. If neither author nor current working provider can be established, ask which provider should review rather than inventing one. Explicit role overrides still take precedence, including a requested multi-model review.
-
-For other roles with no override, the caller may promote an ordinary task to `strongest` when the work warrants it; select the strongest-role default for each already-selected provider without adding agents. Use the effort from the table below for the task's tier, unless the user explicitly specifies an effort. A role override changes the model entries, not the default effort. Aliases inherit the actual parent model; do not claim its provider differs from the author without checking.
+With no override, a `strongest` task selects the strongest-role default for each already-selected provider without adding agents. For a `panel` role this swaps every entry for its provider's strongest-role default. Use the effort from the table below for the task's tier, unless the user explicitly specifies an effort. A role override changes the model entries, not the default effort. Aliases inherit the actual parent model.
 
 Each entry is one of:
 
@@ -98,7 +96,7 @@ Native results arrive in the call's response. For an Orca worker, match the comp
 
 ## Roles
 
-Stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). A matching role line in the override sheet replaces the default entries; the mode is fixed per role. The default entries of a `single` or `strongest` role are the `claude` host's. Without a sheet line, substitute the host provider's single-role or strongest-role default only when that provider has a row in the Providers table. If no native provider is known or no row exists, keep the Roles table entries and route them through Orca. A `panel` role keeps its mixed default on every host. A `cross-review` role selects one eligible provider opposite the actual author.
+Stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). A matching role line in the override sheet replaces the default entries; the mode is fixed per role. The default entries of a `single` or `strongest` role are the `claude` host's. Without a sheet line, substitute the host provider's single-role or strongest-role default only when that provider has a row in the Providers table. If no native provider is known or no row exists, keep the Roles table entries and route them through Orca. A `panel` role keeps its mixed default on every host and runs one agent per entry; a `strongest` task swaps each entry for its provider's strongest-role default without adding agents.
 
 | Task tier | Default effort |
 | --- | --- |
@@ -122,8 +120,8 @@ Stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs
 | arena runners | arena | execute | panel | `claude-opus-5-5@claude`, `gpt-6-sol@codex` |
 | arena cross-judge pool | arena | consult | panel | `claude-opus-5-5@claude`, `gpt-6-sol@codex` |
 | swarm workers | swarm | execute | single | `claude-opus-5-5@claude` |
-| architect runners | architect | consult | single | `claude-opus-5-5@claude` |
-| interrogate reviewers | interrogate | consult | cross-review | `claude-opus-5-5@claude`, `gpt-6-sol@codex` |
+| architect runners | architect | consult | panel | `claude-opus-5-5@claude`, `gpt-6-sol@codex` |
+| interrogate reviewers | interrogate | consult | panel | `claude-opus-5-5@claude`, `gpt-6-sol@codex` |
 
 ### Providers
 

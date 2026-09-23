@@ -2,6 +2,15 @@
 
 This port applies the Cursor → Claude Code substitutions in skill bodies. Earlier drafts left them flagged; this revision resolves them. A later pass added a Codex build that shares the same skills; see [Codex port](#codex-port) below.
 
+## 0.12.0 - design and review on the one-per-provider panel
+
+Restores the panel structure of [Cursor pstack](https://github.com/cursor/plugins/tree/main/pstack) for design and review, sized to two providers: one agent per provider in place of Cursor's one per vendor. Cursor pstack is the reference for model policy in this fork; pstack-claude supplies the skill text. The 0.11.0 single-designer and opposite-provider-reviewer selection is removed.
+
+- `architect` runs Phase B through `arena` again: one design candidate per panel entry, the cross-judge, and synthesis. Design it twice is back. The post-design `interrogate` returns to an opt-in step, as Cursor pstack has it.
+- `interrogate` runs one reviewer per panel entry, one provider each, with the Reviewer A/B table. The author-relative `cross-review` selection, its generator branches, and the override-sheet comment are gone; `interrogate reviewers` is an ordinary panel line again.
+- `arena` keeps one candidate per provider by default and again serves as architect's Phase B; it no longer requires an explicit comparison request.
+- The panel stays `claude-opus-5-5@claude`, `gpt-6-sol@codex`. run-role's `strongest` difficulty now swaps each panel entry for its provider's strongest-role default (`claude-fable-5-1`, `gpt-6-astra`) without adding agents, and names hard-to-reverse changes as `strongest`. Effort defaults are unchanged.
+
 ## 0.11.3 - prefer applicable language-specific writing skills
 
 - `unslop` remains the shared entry point and selects an available external `unslop-<language>` only when its language and task scope match. A document-editing skill does not become an always-on conversation rule.

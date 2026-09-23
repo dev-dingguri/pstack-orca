@@ -11,7 +11,7 @@
       "name": "pstack",
       "source": "./plugins/pstack",
       "description": "if you want to go fast, go deep first. pstack helps you write less, but higher quality code. rigorous agent workflows you can parallelize with confidence. Original pstack by Lauren Tan (poteto). Multi-provider roles through Orca by dev-dingguri.",
-      "version": "0.11.3"
+      "version": "0.12.0"
     }
   ]
 }

@@ -1,6 +1,6 @@
 ---
 name: arena
-description: "Spawn parallel candidates at the same task, pick a base, and graft the strongest parts. Use for /arena, 'arena this', or an explicit request to compare alternative candidates."
+description: "Spawn N parallel candidates at the same task, pick a base, graft the strongest parts of the losers into it. Use for /arena, 'arena this', 'throw it in the arena', or when one attempt at a non-trivial artifact would lock in the wrong shape."
 ---
 
 # Arena
@@ -9,7 +9,7 @@ On Codex, read the [platform mapping](../poteto-mode/references/codex-tools.md),
 
 Fan out N parallel attempts at the same task. Read every candidate end to end. Pick the strongest as the base. Graft the best ideas from the others into it. Verify the synthesized result.
 
-Run only for an explicit candidate-comparison request or configured multi-candidate override. Default to one candidate per provider, using run-role's task difficulty and effort policy. Do not add candidates merely because the task is nontrivial.
+Default to one candidate per panel entry, one provider each, using run-role's task difficulty and effort policy. More candidates need an explicit request or a longer override list.
 
 ## Start
 
@@ -28,7 +28,7 @@ The N candidates will receive the same prompt, so the prompt is the contract.
 
 1. State the artifact each candidate is producing.
 2. Derive the rubric. State what success looks like for *this* task, then turn it into 3-6 concrete gradeable criteria. The rubric is the picker's tool in Phase D; candidates only see the task.
-3. Pick the runners. Use `arena runners` from the runtime's override sheet when present. Otherwise run one each on the defaults in [Models](#models). More candidates or repeated same-model candidates require an explicit request or override. Each entry is `slug@provider`; **run-role** runs it natively or as an Orca worker. If architect passes `architect runners` for an explicitly requested comparison, resolve that role instead; without a multi-entry override, use the ordinary arena provider pair for that requested comparison but retain architect's consult mode.
+3. Pick the runners. Use `arena runners` from the runtime's override sheet when present. Otherwise run one each on the defaults in [Models](#models). More candidates or repeated same-model candidates require an explicit request or override. Each entry is `slug@provider`; **run-role** runs it natively or as an Orca worker. When the calling skill names another role for the runners (architect passes `architect runners`), resolve that role instead of `arena runners`, here and in Phase B, keeping that role's mode.
 4. Assign output paths. Each candidate writes to its own location (a git worktree where possible, otherwise `/tmp/arena-<slug>/candidate-<n>/`), per the **separate-before-serializing-shared-state** principle skill.
 
 ## Phase B: Fan out

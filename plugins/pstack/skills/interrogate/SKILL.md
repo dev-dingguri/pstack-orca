@@ -1,13 +1,13 @@
 ---
 name: interrogate
-description: "Use for \"interrogate\", \"adversarial review\", \"multi-model review\", \"challenge this\", \"stress test this code\", \"find blind spots\", or \"tear this apart\". An independent reviewer challenges changes; explicit overrides can request multiple reviewers."
+description: "Use for \"interrogate\", \"adversarial review\", \"multi-model review\", \"challenge this\", \"stress test this code\", \"find blind spots\", or \"tear this apart\". One reviewer per provider challenges changes from independent angles."
 ---
 
 # Interrogate
 
 On Codex, read the [platform mapping](../poteto-mode/references/codex-tools.md), including its per-skill notes, before following this skill.
 
-By default, use one reviewer from the provider opposite the actual author. Resolve its model and reasoning effort through run-role from the task difficulty. A multi-model review is opt-in through an explicit request or role override; each reviewer then gets the same prompt and rubric.
+Spawn one reviewer per configured panel entry to adversarially review code changes, one provider each. Resolve models and reasoning effort through run-role from the task difficulty. Each reviewer gets the same prompt and rubric. The adversarial signal comes from model diversity, not assigned personas.
 
 The deliverable is a synthesized verdict. Do NOT auto-apply changes.
 
@@ -34,16 +34,16 @@ Write one clear paragraph. If you're unsure about the intent, ask the user befor
 
 ## Step 3, Spawn Reviewers
 
-Identify the actual author's model and provider from the producing dispatch or supplied context. If unknown or mixed, pass the current working provider as the fallback and disclose it. Launch through the **run-role** skill with role `interrogate reviewers`, passing that authorship and the task difficulty. With no override, select exactly one opposite-provider reviewer from the eligible defaults below. With an explicit request or role override for multiple reviewers, dispatch one per selected entry. Label reviewers A, B, and so on. An entry whose provider is the host runs natively; any other entry runs as an Orca worker that writes to the result location run-role names.
+Launch all reviewers in a single message through the **run-role** skill with role `interrogate reviewers`, passing the task difficulty. Use the `interrogate reviewers` list from the runtime's override sheet when present, one reviewer per entry, extending or shrinking the Reviewer A/B labels below to the configured entry count; otherwise use the table defaults. A `strongest` review swaps each entry for its provider's strongest-role default. An entry whose provider is the host runs natively; any other entry runs as an Orca worker that writes to the result location run-role names.
 
-| Provider | Eligible default |
+| Subagent | Default model |
 |----------|---------------|
-| `claude` | `claude-opus-5-5@claude` |
-| `codex` | `gpt-6-sol@codex` |
+| Reviewer A | `claude-opus-5-5@claude` |
+| Reviewer B | `gpt-6-sol@codex` |
 
 For each reviewer:
 - `subagent_type`: `general-purpose`
-- `model`: the slug of the entry resolved by run-role, including any difficulty-based promotion
+- `model`: the slug of the entry resolved by run-role (the part before `@`), including any difficulty-based promotion
 - `readonly`: `true`
 
 If a native or Orca launch rejects the selected model, report the attempted launch and error and ask the user to retry, select a replacement, or drop the dispatch. Do not substitute automatically. Other dispatches may settle, but do not synthesize a verdict dependent on the failed dispatch until the user chooses. If the configured value is `inherit-parent` or `auto`, omit `model` instead; these aliases are not model slugs.
@@ -56,13 +56,9 @@ Read `references/reviewer-prompt.md` and fill in the template with:
 
 The same filled template goes to all reviewers, so every model applies the code-quality lens.
 
-Do not add a same-model reviewer by default. If a material question remains after checking the first review's evidence, an additional fresh reviewer may examine only that question. Give it the requirements and source evidence before any prior verdict, and disclose why the extra review was needed.
-
 ## Step 4, Synthesize
 
 As results come back, build a unified picture:
-
-For one reviewer, the Agreement Map states that independent reviewer consensus was not measured. Compare findings with the source and the lead's verification instead of inventing votes. Reuse a completed review when its scope, source state, constraints, and questions are unchanged.
 
 1. **Parse all findings** from the reviewers
 2. **Identify consensus**. Findings raised by 2+ models independently are highest signal.

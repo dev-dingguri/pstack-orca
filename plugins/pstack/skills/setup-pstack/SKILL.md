@@ -33,7 +33,7 @@ The default role-to-model mapping is the rule shape shown in the Write the overr
 
 ### 3. Map and confirm
 
-Show every role with its current entries or dynamic selection rule, marking any real slug not in the detected or confirmed set as needing a choice. Ask whether to accept as-is or change specific roles, offering confirmed models of every provider plus `inherit-parent` and `auto`. Write real entries as `slug@provider`. Prefer `AskUserQuestion` over free text. Architect defaults to one designer; interrogate defaults to one opposite-provider reviewer. Leave `interrogate reviewers` absent to preserve that dynamic selection, rather than writing its eligible model pool as a fixed list. An explicit multi-entry override opts into multiple designers or reviewers. Arena defaults to one candidate per provider; its cross-judge pool supplies one judge. `swarm workers` is the default for each assigned worker. Explain run-role's ordinary and difficult effort defaults; explicit user effort choices take precedence.
+Show every role with its current entries, marking any real slug not in the detected or confirmed set as needing a choice. Ask whether to accept as-is or change specific roles, offering the confirmed models of every provider plus `inherit-parent` and `auto` as the options. Write every real entry as `slug@provider`. Prefer `AskUserQuestion` over free text. For panel roles (arena runners, architect runners, interrogate reviewers) the value is a list, and one subagent runs per entry, alias entries included, so the list length sets the count; keep one entry per provider unless the user wants more. `arena cross-judge pool` is also a list, but Arena selects one value from it whose model family differs from the parent's when possible. `swarm workers` is the default model for every worker unless a race or comparison assigns another model per arm. Explain run-role's ordinary and difficult effort defaults; explicit user effort choices take precedence.
 
 ### 4. Choose whether the session hook routes tasks
 
@@ -67,8 +67,8 @@ reflect judgment, divergent, synthesizer: claude-opus-5-5@claude
 arena runners: claude-opus-5-5@claude, gpt-6-sol@codex
 arena cross-judge pool: claude-opus-5-5@claude, gpt-6-sol@codex
 swarm workers: claude-opus-5-5@claude
-architect runners: claude-opus-5-5@claude
-<!-- interrogate reviewers: omit this role to select one provider opposite the author. -->
+architect runners: claude-opus-5-5@claude, gpt-6-sol@codex
+interrogate reviewers: claude-opus-5-5@claude, gpt-6-sol@codex
 
 session hook: on
 ```

@@ -4,7 +4,7 @@ These rules apply to every coding agent working in this repository. Read `CONTRI
 
 ## Fork scope
 
-- Preserve upstream behavior and keep changes focused on Orca integration. Change model policy or workflow structure only when the user explicitly requests it.
+- Preserve upstream behavior and keep changes focused on Orca integration. Change model policy or workflow structure only when the user explicitly requests it. Skill text comes from pstack-claude (`upstream` remote); for model policy and workflow structure, follow the original Cursor pstack (https://github.com/cursor/plugins/tree/main/pstack, pinned in `tools/upstream.json`) and size its panels to this fork's two providers.
 - Preserve intentional fork changes during upstream merges. Use `CHANGES.md` to identify their purpose.
 - Avoid unrelated refactoring and duplicated instructions. Refer to the owning skill instead of copying its procedures into this file.
 

@@ -37,8 +37,8 @@
     { "role": "arena runners", "models": "panel", "skill": "arena", "mode": "execute" },
     { "role": "arena cross-judge pool", "models": "panel", "skill": "arena", "mode": "consult" },
     { "role": "swarm workers", "models": ["claude-opus-5-5"], "skill": "swarm", "mode": "execute" },
-    { "role": "architect runners", "models": ["claude-opus-5-5"], "skill": "architect", "mode": "consult" },
-    { "role": "interrogate reviewers", "models": "panel", "selection": "cross-review", "skill": "interrogate", "mode": "consult" }
+    { "role": "architect runners", "models": "panel", "skill": "architect", "mode": "consult" },
+    { "role": "interrogate reviewers", "models": "panel", "skill": "interrogate", "mode": "consult" }
   ],
   "codex": {
     "singleRoleExample": "gpt-6-sol",

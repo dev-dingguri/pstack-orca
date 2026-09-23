@@ -1,6 +1,6 @@
 ---
 name: interrogate
-description: have an independent reviewer from the other provider challenge a diff
+description: have one reviewer per provider try to break a diff
 disable-model-invocation: true
 ---
 

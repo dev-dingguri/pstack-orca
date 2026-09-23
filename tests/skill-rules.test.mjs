@@ -118,7 +118,7 @@ const rules = [
   {
     source: "pstack-orca architect runners through run-role",
     file: "architect/SKILL.md",
-    phrase: "Run one designer through **run-role** with role `architect runners`",
+    phrase: "through the **run-role** skill with role `architect runners`",
   },
   {
     source: "pstack-orca interrogate reviewers through run-role",
@@ -143,7 +143,7 @@ const rules = [
   {
     source: "pstack-orca architect overrides arena's runner role",
     file: "arena/SKILL.md",
-    phrase: "If architect passes `architect runners` for an explicitly requested comparison, resolve that role instead",
+    phrase: "When the calling skill names another role for the runners (architect passes `architect runners`), resolve that role instead of `arena runners`",
   },
   {
     source: "pstack-orca interrogate never substitutes a rejected model automatically",
