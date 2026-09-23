@@ -17,6 +17,8 @@ The calling skill hands over a list of dispatches. Each dispatch is one agent to
 - The entry to run it on, chosen by the caller from the role's resolved entries (step 1). A caller may repeat one entry (`how` runs two to four explorers on the one `how explorer` entry; `swarm` runs N workers), map entries one to one (a reviewer per `interrogate reviewers` entry), or pick a single entry (arena's cross-judge).
 - The brief: the task, file pointers rather than inlined context, and what to report. The calling skill writes it. Where the caller assigns an output location per agent (arena candidates, swarm workers, architect design packages), the brief names it.
 
+Use English by default for briefs, questions, replies, status updates, and results exchanged between agents, for both native and Orca dispatches. State this language rule in each brief. Use another language when explicitly requested or needed for the task, and preserve quoted source text. Keep user-facing deliverables in the user's requested language; a Korean user conversation alone does not change the language of internal coordination.
+
 ## Steps
 
 ### 1. Resolve the entries

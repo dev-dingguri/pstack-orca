@@ -17,6 +17,10 @@ For coordinator-managed work, the caller supplies the work location, provider, f
 
 Give the worker the objective, authority boundaries, acceptance evidence, and context it cannot access. Let it choose discovery, implementation, and validation methods within that scope. Do not copy parent execution identifiers or lifecycle commands into the contract; the worker follows Orca's injected preamble. Delegation does not expand authority or concurrency limits. Do not concurrently edit source or mutate shared check resources while another worker or review uses them. This binds the caller too: while a worker runs in a worktree, including a `consult` worker, leave that worktree's source and shared check resources unchanged. Make needed edits after the worker settles or in a separate worktree.
 
+## Communication language
+
+Use English by default for agent-to-agent task specs, contracts, questions, replies, status updates, completion summaries, and internal result files. Include this rule in the worker contract so it applies in both directions. Use another language when explicitly requested or needed for the task, and preserve quoted source text. User-facing deliverables follow the user's requested language; a Korean user conversation alone does not change the language of internal coordination.
+
 ## Availability
 
 Only a real worker start attempt decides whether a provider and its Orca launch path are available. Judge from that attempt and its launch receipt, not from indirect signals. `orca account list` reports the accounts registered with `orca account add`; that registration is not required to start a Codex or Claude Code worker, so an empty list is not evidence that the provider is unavailable. A version command, a missing configuration entry, or an absent account likewise establishes nothing.
@@ -44,4 +48,4 @@ Read [file-delivery.md](references/file-delivery.md) before preparing a contract
 
 Use the built-in guide to match the completion message to the expected Task and Dispatch. Read the complete result and verify it against the original request: compare consultation claims with sources, or inspect execution changes and validation evidence. The caller accepts or rejects the work and handles questions within existing authority. Follow the built-in guide for terminal disposition and message acknowledgment, and the file-delivery reference for file cleanup.
 
-Judge completeness from the matched completion message, required result content, and evidence, without a report terminator. Follow the caller's response format and language. Disclose uncertainty, failed validation, or retained resources when they affect the outcome or subsequent work.
+Judge completeness from the matched completion message, required result content, and evidence, without a report terminator. Follow the caller's response format and use the user's requested language for the final user-facing report. Disclose uncertainty, failed validation, or retained resources when they affect the outcome or subsequent work.

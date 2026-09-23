@@ -16,7 +16,7 @@ The helper reserves an empty contract file and rejects existing call directories
 
 Write the full contract directly with the host's file-editing tool and read it back before launch. Do not embed detailed contract text in a shell argument, here-string, heredoc, inline Python, or generated command. The short Task spec summarizes target, objective, constraints, ownership, and acceptance evidence and tells the worker to read the absolute contract path before work. No Task or Dispatch ID is needed in the contract; the injected preamble supplies lifecycle authority.
 
-Include source paths, inaccessible context, mode and authority, result location or channel, and required retention. Do not transmit secrets or unnecessary conversation history. For `consult`, identify allowed output locations and prohibit source and external-state changes. Do not create a separate evidence archive without a user, caller, or recovery requirement.
+Include source paths, inaccessible context, mode and authority, result location or channel, required retention, and the worker's communication language under the skill's [Communication language](../SKILL.md#communication-language) rule. Distinguish internal results from user-facing deliverables when specifying their languages. Do not transmit secrets or unnecessary conversation history. For `consult`, identify allowed output locations and prohibit source and external-state changes. Do not create a separate evidence archive without a user, caller, or recovery requirement.
 
 ## Access and delivery
 
