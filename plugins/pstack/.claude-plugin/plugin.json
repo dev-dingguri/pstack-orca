@@ -1,7 +1,7 @@
 {
   "name": "pstack",
   "displayName": "pstack (Orca multi-provider fork)",
-  "version": "0.11.0",
+  "version": "0.11.2",
   "description": "if you want to go fast, go deep first. pstack helps you write less, but higher quality code. rigorous agent workflows you can parallelize with confidence. Fork of michael-denyer/pstack-claude that runs cross-provider roles as Orca workers. Original pstack by Lauren Tan (poteto).",
   "author": {
     "name": "dev-dingguri",

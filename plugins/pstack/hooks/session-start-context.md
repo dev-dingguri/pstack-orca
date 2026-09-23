@@ -1,6 +1,8 @@
 <EXTREMELY_IMPORTANT>
 You have pstack.
 
+Choose agent execution separately from worktree management. A request to create an Orca worktree and use subagents uses Orca for the checkout and native subagents for same-provider work: `spawn_agent` on Codex, `Agent` on Claude Code. Follow `pstack:run-role` for provider routing. Loading orca-cli does not select a terminal agent or Orca orchestration. Use those paths only for cross-provider work or an explicit request for an Orca worker, terminal agent, or full ownership handoff.
+
 Invoke the `pstack:poteto-mode` skill and follow its instructions when a task meets any of these:
 
 - it touches more than one file, or changes a signature other files call

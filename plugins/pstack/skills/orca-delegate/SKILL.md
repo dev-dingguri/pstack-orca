@@ -1,9 +1,11 @@
 ---
 name: orca-delegate
-description: "Apply delegation policy and file delivery rules to supervised Orca workers. Use for explicit $orca-delegate calls, requests to use another coding agent as an Orca subagent, the run-role skill's cross-provider entries, or coordinator-managed execution. Not for ordinary native subagents or full ownership handoffs."
+description: "Apply delegation policy and file delivery rules to supervised Orca workers. Use for explicit $orca-delegate calls, explicit supervised Orca worker requests, the run-role skill's cross-provider entries, or Orca coordinator-managed execution. Not for worktree creation with native subagents or full ownership handoffs."
 ---
 
 # Orca Delegate
+
+Check [run-role's agent-path rules](../run-role/SKILL.md#2-decide-the-path-per-dispatch) before loading Orca execution guides. Creating an Orca worktree and using subagents does not select this skill. Same-provider work uses native subagents unless the user explicitly selects an Orca worker or terminal agent. An existing Orca coordination contract still governs its assigned workers.
 
 This skill defines delegation policy and file delivery. Read and follow the installed `orca-cli` skill to select the executable and the installed `orchestration` skill for execution, observation, completion accounting, and recovery. Locate them through the host's skill catalog; do not assume they are bundled with pstack. Follow those skills' guide-loading instructions, including any version-matched guides and conditional references they require. References to the built-in guide below mean the guide loaded through those skills. Do not maintain a separate command reference or lifecycle here. Use `orca-cli` for full ownership handoffs.
 
@@ -18,6 +20,8 @@ For coordinator-managed work, the caller supplies the work location, provider, f
 When the caller supplies both model and effort, pass them as `--model` and `--effort` using the installed orchestration skill's launch procedure. Keep them in the contract as well; prompt text alone does not configure reasoning effort. If the receipt cannot confirm a setting, report it as unconfirmed rather than applied.
 
 Give the worker the objective, authority boundaries, acceptance evidence, and context it cannot access. Let it choose discovery, implementation, and validation methods within that scope. Do not copy parent execution identifiers or lifecycle commands into the contract; the worker follows Orca's injected preamble. Delegation does not expand authority or concurrency limits. Do not concurrently edit source or mutate shared check resources while another worker or review uses them. This binds the caller too: while a worker runs in a worktree, including a `consult` worker, leave that worktree's source and shared check resources unchanged. Make needed edits after the worker settles or in a separate worktree.
+
+Preserve the parent's poteto-mode state and role-specific instructions in the worker contract under [run-role's propagation policy](../run-role/SKILL.md#carry-poteto-mode-into-the-brief). Apply that policy to standalone delegations too. Before launch, read the contract back and check that it carries the state, the applicable instructions, and worker-readable skill paths when required. A launch receipt confirms dispatch, not that the worker read or followed the skill.
 
 ## Communication language
 

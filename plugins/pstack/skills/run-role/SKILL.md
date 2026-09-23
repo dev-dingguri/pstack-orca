@@ -16,11 +16,25 @@ The calling skill hands over a list of dispatches. Each dispatch is one agent to
 - The role label, exactly as it appears in the [Roles](#roles) table.
 - The entry to run it on, chosen by the caller from the role's resolved entries (step 1). A caller may repeat one entry (`how` runs two to four explorers on the one `how explorer` entry; `swarm` runs N workers), map entries one to one (a reviewer per `interrogate reviewers` entry), or pick a single entry (arena's cross-judge).
 - The brief: the task, file pointers rather than inlined context, and what to report. The calling skill writes it. Where the caller assigns an output location per agent (arena candidates, swarm workers, architect design packages), the brief names it.
+- Whether the caller is following poteto-mode for this task. Reading the skill to discuss or edit it does not activate it.
 - The actual author's model and provider for a review, when known, plus the task difficulty (`single` for ordinary work, `strongest` for difficult design, complex root-cause analysis, or consequential review). Record the author from the producing dispatch, not from the coordinator's provider. If authorship is unknown or spans providers, use the current working model's provider and disclose that fallback.
 
 Use English by default for briefs, questions, replies, status updates, and results exchanged between agents, for both native and Orca dispatches. State this language rule in each brief. Use another language when explicitly requested or needed for the task, and preserve quoted source text. Keep user-facing deliverables in the user's requested language; a Korean user conversation alone does not change the language of internal coordination.
 
 ## Steps
+
+### Carry poteto-mode into the brief
+
+State `Parent poteto-mode: active` or `Parent poteto-mode: inactive` in every native brief and Orca contract. Resolve this from the caller's instructions, not from the provider, model, or presence of an installed skill. Do not rely on conversation inheritance or a session-start hook.
+
+When active, include instructions appropriate to the assigned work:
+
+- Implementation and modification workers: read the [poteto-mode skill](../poteto-mode/SKILL.md) in full before working and follow it within the assigned scope.
+- Reviewers, investigators, explorers, judges, and designers: follow the assigned role's skill and prompt. The parent's active mode does not require the full poteto-mode playbook or additional delegation for this role.
+
+Use the assigned work to choose these instructions, not `consult` or `execute` alone. Include a skill path the worker can read, resolving its installed copy or transferring required skill files through orca-delegate's file-delivery procedure. Preserve the assigned authority, output requirements, and delegation limits. Workers that follow poteto-mode carry this policy into their own dispatches.
+
+When inactive, do not add a poteto-mode activation instruction. This records the parent's state without disabling instructions that independently apply to the worker.
 
 ### 1. Resolve the entries
 
@@ -41,6 +55,12 @@ Each entry is one of:
 ### 2. Decide the path per dispatch
 
 The host provider is `claude` on Claude Code and `codex` on Codex. On another runtime no native provider is known: aliases run natively, and every real entry goes through Orca.
+
+Choose the agent path separately from worktree management, before loading Orca execution guides. A request to create an Orca worktree and use subagents selects Orca for the checkout only. It does not request a terminal agent, a supervised Orca worker, or a full ownership handoff.
+
+For a same-provider dispatch, use the native path below even inside an Orca-managed worktree. Reuse an existing requested checkout. When a new checkout is requested, use the installed orca-cli skill to create it without agent-launch flags. Put the checkout's absolute path in the native brief. Tell the worker to perform file operations and shell commands in that checkout; do not assume its initial working directory changed. Do not launch a TUI or load orchestration merely because orca-cli was used. Apply the Orca guide's handoff and agent-first launch instructions only after selecting that execution path here. If native execution cannot access the checkout, report that limitation instead of silently changing the agent path.
+
+An explicit request for a terminal agent, supervised Orca worker, or full ownership handoff overrides the same-provider default. Follow orca-delegate for supervised workers and orca-cli for full handoffs. Mere mention of Orca, another worktree, or subagents is not that override.
 
 - Provider equals the host: native. On Claude Code, one `Agent` call with `model` set to the entry's slug (the part before `@`), `run_in_background: true`, and the `subagent_type` and `readonly` the calling skill prescribes. On Codex, one `spawn_agent` with the same model.
 - Provider differs from the host: an Orca worker. Read the bundled [orca-delegate skill](../orca-delegate/SKILL.md) and its [file delivery reference](../orca-delegate/references/file-delivery.md), then follow them with the provider from the entry, the slug as the user-selected model, the mode from the [Roles](#roles) table, and the work location and result location from step 3. The contract carries the brief.

@@ -2,6 +2,16 @@
 
 This port applies the Cursor → Claude Code substitutions in skill bodies. Earlier drafts left them flagged; this revision resolves them. A later pass added a Codex build that shares the same skills; see [Codex port](#codex-port) below.
 
+## 0.11.2 - separate Orca worktrees from agent execution
+
+- Same-provider subagents remain native when the user asks for an Orca worktree. Worktree creation does not select a terminal agent, supervised Orca worker, or ownership handoff.
+- The session hook and orca-delegate entry guard direct callers to run-role before loading Orca execution guides. Native briefs name the target checkout explicitly. Cross-provider workers and explicit Orca execution requests retain their existing paths.
+
+## 0.11.1 - carry poteto-mode across agent dispatches
+
+- Native briefs and Orca contracts now record whether the caller is following poteto-mode. When active, implementation workers read and follow the full skill; dedicated review, investigation, and design roles retain their assigned workflow.
+- Standalone Orca delegations use the same policy. Contracts preserve scope and authority and provide worker-readable skill paths without relying on session hooks or inherited conversation history.
+
 ## 0.11.0 - use one cross-provider reviewer by default
 
 - `architect` now uses one designer followed by a reviewer from the other provider. `interrogate` selects one reviewer relative to the actual author. Explicit requests and model overrides can still select multiple reviewers. Existing lead judgment and finding categories remain unchanged.
