@@ -1,6 +1,6 @@
 ---
 name: arena
-description: "Spawn N parallel candidates at the same task, pick a base, graft the strongest parts of the losers into it. Use for /arena, 'arena this', 'throw it in the arena', or when one attempt at a non-trivial artifact would lock in the wrong shape."
+description: "Spawn parallel candidates at the same task, pick a base, and graft the strongest parts. Use for /arena, 'arena this', or an explicit request to compare alternative candidates."
 ---
 
 # Arena
@@ -8,6 +8,8 @@ description: "Spawn N parallel candidates at the same task, pick a base, graft t
 On Codex, read the [platform mapping](../poteto-mode/references/codex-tools.md), including its per-skill notes, before following this skill.
 
 Fan out N parallel attempts at the same task. Read every candidate end to end. Pick the strongest as the base. Graft the best ideas from the others into it. Verify the synthesized result.
+
+Run only for an explicit candidate-comparison request or configured multi-candidate override. Default to one candidate per provider, using run-role's task difficulty and effort policy. Do not add candidates merely because the task is nontrivial.
 
 ## Start
 
@@ -26,7 +28,7 @@ The N candidates will receive the same prompt, so the prompt is the contract.
 
 1. State the artifact each candidate is producing.
 2. Derive the rubric. State what success looks like for *this* task, then turn it into 3-6 concrete gradeable criteria. The rubric is the picker's tool in Phase D; candidates only see the task.
-3. Pick the runners. Use `arena runners` from `~/.claude/pstack-models.md` when present. Otherwise run one each on the defaults in [Models](#models). Spawn more when the arena covers multiple design directions. Same model N times when the work is generation-bound rather than judgment-sensitive. Each entry is `slug@provider`; the **run-role** skill runs it natively or as an Orca worker. When the calling skill names another role for the runners (architect passes `architect runners`), resolve that role instead of `arena runners`, here and in Phase B.
+3. Pick the runners. Use `arena runners` from the runtime's override sheet when present. Otherwise run one each on the defaults in [Models](#models). More candidates or repeated same-model candidates require an explicit request or override. Each entry is `slug@provider`; **run-role** runs it natively or as an Orca worker. If architect passes `architect runners` for an explicitly requested comparison, resolve that role instead; without a multi-entry override, use the ordinary arena provider pair for that requested comparison but retain architect's consult mode.
 4. Assign output paths. Each candidate writes to its own location (a git worktree where possible, otherwise `/tmp/arena-<slug>/candidate-<n>/`), per the **separate-before-serializing-shared-state** principle skill.
 
 ## Phase B: Fan out
@@ -75,5 +77,5 @@ One synthesized artifact. One short synthesis note alongside, naming the base, t
 
 Role defaults, stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). A matching role line in `~/.claude/pstack-models.md` overrides each at runtime; see `/setup-pstack`. Each entry is `slug@provider`; the **run-role** skill runs an entry natively when its provider is the host and as an Orca worker otherwise, in the mode shown.
 
-- arena runners: `claude-opus-5-5@claude`, `gpt-5.6-sol@codex`, `claude-fable-5-1@claude` (execute)
-- arena cross-judge pool: `claude-opus-5-5@claude`, `gpt-5.6-sol@codex`, `claude-fable-5-1@claude` (consult)
+- arena runners: `claude-opus-5-5@claude`, `gpt-6-sol@codex` (execute)
+- arena cross-judge pool: `claude-opus-5-5@claude`, `gpt-6-sol@codex` (consult)

@@ -7,7 +7,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { loadModels, providerOf, resolveModels, section } from "../tools/generate.mjs";
+import { loadModels, overrideSheetBlock, panelSkills, providerOf, resolveModels, rolesSection, section } from "../tools/generate.mjs";
 import { markdownFiles } from "../tools/validate-skills.mjs";
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
@@ -17,6 +17,17 @@ const models = loadModels();
 const available = new Set(models.available.map((m) => m.slug));
 
 describe("models.json shape", () => {
+  test("default setup preserves dynamic cross-review instead of freezing a reviewer panel", () => {
+    const sheet = overrideSheetBlock(models);
+    const assignments = sheet.split("\n").filter((line) => /^[a-z][^:]*: /.test(line));
+    expect(assignments.some((line) => line.startsWith("interrogate reviewers:"))).toBe(false);
+    expect(models.roles.find((role) => role.role === "interrogate reviewers").selection).toBe("cross-review");
+    expect(rolesSection(models)).toContain("| interrogate reviewers | interrogate | consult | cross-review |");
+    expect(panelSkills(models)).toEqual(["arena"]);
+    expect(models.roles.find((role) => role.role === "architect runners").models).toHaveLength(1);
+    expect(models.panel.map((slug) => providerOf(models, slug)).sort()).toEqual(["claude", "codex"]);
+    expect(models.effort).toEqual({ single: "high", strongest: "xhigh" });
+  });
   test("available slugs are unique and the defaults are among them", () => {
     expect(available.size).toBe(models.available.length);
     expect(available.has(models.singleRoleDefault)).toBe(true);

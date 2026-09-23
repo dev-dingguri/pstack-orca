@@ -16,7 +16,7 @@ The prose that ships alongside the type sketch. One page. Sentence-case headings
 
 ## Synthesis decision
 
-*Filled in by [arena](../../arena/SKILL.md). Records which candidate became the base and why, what was adapted from each of the others, and what was rejected and why.*
+*Filled in by the lead after independent review. Record the designer's model and provider, accepted findings and resulting changes, and rejected findings with reasons. For an explicit [arena](../../arena/SKILL.md) comparison, also record the chosen base and any adaptations from other candidates.*
 
 ## Tradeoffs accepted
 

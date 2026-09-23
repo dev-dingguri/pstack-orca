@@ -5,7 +5,7 @@ description: "Apply delegation policy and file delivery rules to supervised Orca
 
 # Orca Delegate
 
-This skill defines delegation policy and file delivery. Use the version-matched built-in `orchestration` guide for execution, observation, completion accounting, and recovery. Resolve the executable through `orca-cli` and load the guides from that executable; do not maintain a separate command reference or lifecycle here. Use `orca-cli` for full ownership handoffs.
+This skill defines delegation policy and file delivery. Read and follow the installed `orca-cli` skill to select the executable and the installed `orchestration` skill for execution, observation, completion accounting, and recovery. Locate them through the host's skill catalog; do not assume they are bundled with pstack. Follow those skills' guide-loading instructions, including any version-matched guides and conditional references they require. References to the built-in guide below mean the guide loaded through those skills. Do not maintain a separate command reference or lifecycle here. Use `orca-cli` for full ownership handoffs.
 
 A bare request to review, implement, or diagnose does not invoke this skill. A request for an Orca subagent whose result the caller will collect is supervised delegation. The pstack `run-role` skill is such a caller: it supplies the provider, model, mode, and work location for every entry whose provider is not the host. Reading this skill to edit or discuss it does not start a worker.
 
@@ -14,6 +14,8 @@ A bare request to review, implement, or diagnose does not invoke this skill. A r
 For a standalone delegation, identify the target from the request and available state, use its current HEAD as the fixed point when applicable, and supervise one fresh worker. Honor the requested work location. If no provider is specified, a Claude Code caller uses Codex and a Codex caller uses Claude Code.
 
 For coordinator-managed work, the caller supplies the work location, provider, fixed point, concurrency limit, access restrictions, and retention requirements. The caller owns scheduling, questions, and result acceptance. These choices override standalone defaults. Use user-selected model and reasoning effort first, then explicit calling-contract settings; leave unspecified values unset. Check requested settings against the launch receipt and disclose unsupported settings or provider substitutions under the caller's fallback policy.
+
+When the caller supplies both model and effort, pass them as `--model` and `--effort` using the installed orchestration skill's launch procedure. Keep them in the contract as well; prompt text alone does not configure reasoning effort. If the receipt cannot confirm a setting, report it as unconfirmed rather than applied.
 
 Give the worker the objective, authority boundaries, acceptance evidence, and context it cannot access. Let it choose discovery, implementation, and validation methods within that scope. Do not copy parent execution identifiers or lifecycle commands into the contract; the worker follows Orca's injected preamble. Delegation does not expand authority or concurrency limits. Do not concurrently edit source or mutate shared check resources while another worker or review uses them. This binds the caller too: while a worker runs in a worktree, including a `consult` worker, leave that worktree's source and shared check resources unchanged. Make needed edits after the worker settles or in a separate worktree.
 

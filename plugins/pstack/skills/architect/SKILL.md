@@ -7,7 +7,7 @@ description: "Sketch types, signatures, and module structure before code, then s
 
 On Codex, read the [platform mapping](../poteto-mode/references/codex-tools.md), including its per-skill notes, before following this skill.
 
-Design before implementing. Sketch types, function signatures, class shapes, and module boundaries with `not implemented` bodies and pseudocode. Synthesize across multiple model perspectives, then fill in code against the chosen sketch. If implementation proves the sketch wrong, throw it out and redesign.
+Design before implementing. Sketch types, function signatures, class shapes, and module boundaries with `not implemented` bodies and pseudocode. Use one designer and one independent reviewer from the other provider, then fill in code against the reviewed sketch. If implementation proves the sketch wrong, throw it out and redesign.
 
 ## Start
 
@@ -29,17 +29,17 @@ Skip Phase A only when the work is genuinely greenfield with no surrounding syst
 
 ## Phase B: Sketch
 
-Run the **arena** skill with the design-sketch task and the Phase A grounding artifacts. Pass `references/runner-prompt.md` as each runner's prompt. Each candidate produces a design package shaped per `references/rationale-template.md`.
+Run one designer through **run-role** with role `architect runners`, the design-sketch task, Phase A grounding artifacts, and the task difficulty. Pass `references/runner-prompt.md` as its prompt and assign an output location for the design package shaped per `references/rationale-template.md`. Preserve the producing model and provider with the package for reviewer selection.
 
-Use your configured architect runners (defaults in [Models](#models)). Tell Arena to resolve its runners through the **run-role** skill with role `architect runners`, so each candidate runs under that role's entries and mode and writes only its design package.
+Use the configured designer (defaults in [Models](#models)). A difficult design uses the provider's strongest-role default and corresponding effort through run-role. The designer writes only the design package. Multiple designers require an explicit request or role override; use **arena** with role `architect runners` only for that requested comparison.
 
-Design it twice. Require at least two structurally distinct candidates before synthesis, even when the first looks sufficient. This is the **exhaust-the-design-space** principle skill made concrete. Whole-shape alternatives, not point fixes inside one shape.
+Have the designer consider structurally distinct alternatives and record why it chose its shape; this does not require another candidate worker.
 
 Screen every candidate against [`references/design-red-flags.md`](references/design-red-flags.md) before synthesis. Reject or revise shallow modules, information leakage, temporal decomposition, and pass-through methods.
 
 Compare viable candidates on interface depth. Prefer the design that hides more complexity behind a smaller, simpler public surface. A rich interface can keep call chains short by concentrating capability instead of scattering it across layers.
 
-Arena returns one synthesized design package. The synthesis decision populates the rationale's "Synthesis decision" section.
+After the designer settles, run **interrogate** on the package, passing the actual designer's model and provider and the design's difficulty. The default is one opposite-provider reviewer. Apply interrogate's existing lead judgment to the findings, then revise the package as warranted. Record accepted and rejected findings in the rationale's "Synthesis decision" section. Reuse this review for an unchanged design instead of launching another review in Phase C.
 
 ## Phase C: Agree (opt-in)
 
@@ -47,7 +47,7 @@ Default: proceed directly to implementation with the synthesized design. No huma
 
 Opt in to a checkpoint when the invoker explicitly asks: "/architect with checkpoint," "stop and show me before implementing," or similar. Then surface the synthesized design and pause for sign-off.
 
-The synthesis can ship as its own commit either way, as the "scaffold first" mode of the **foundational-thinking** principle skill. Planned and scoped breakage during fill-in is fine, per the **outcome-oriented-execution** principle skill. For adversarial pressure on the design before implementing, run the **interrogate** skill on the synthesized sketch.
+The synthesis can ship as its own commit either way, as the "scaffold first" mode of the **foundational-thinking** principle skill. Planned and scoped breakage during fill-in is fine, per the **outcome-oriented-execution** principle skill. Phase B's review supplies adversarial pressure before implementation.
 
 If the human pushes back on the shape (in a checkpoint or after the fact), treat that as Phase A evidence. Re-ground and re-run Phase B before writing more code.
 
@@ -81,7 +81,7 @@ When you scrap:
 1. Re-run the **how** skill over what's been built.
 2. Redesign as if the new constraints had been day-one assumptions, per redesign-from-first-principles.
 3. Subtract before adding, per the **subtract-before-you-add** principle skill. The new sketch should be smaller than the old one before it grows.
-4. Return to Phase B and re-run arena.
+4. Return to Phase B and produce a new design with independent review.
 
 ## Outputs
 
@@ -91,4 +91,4 @@ The caller's usage is written first and the type sketch derived from it. One fil
 
 Role defaults, stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). A matching role line in `~/.claude/pstack-models.md` overrides each at runtime; see `/setup-pstack`. Each entry is `slug@provider`; the **run-role** skill runs an entry natively when its provider is the host and as an Orca worker otherwise, in the mode shown.
 
-- architect runners: `claude-opus-5-5@claude`, `gpt-5.6-sol@codex`, `claude-fable-5-1@claude` (consult)
+- architect runners: `claude-opus-5-5@claude` (consult)
