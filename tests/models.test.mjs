@@ -7,7 +7,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { loadModels, overrideSheetBlock, panelSkills, providerOf, resolveModels, rolesSection, section } from "../tools/generate.mjs";
+import { fanOutSkills, loadModels, overrideSheetBlock, panelSkills, poolRoles, providerOf, resolveModels, rolesSection, section } from "../tools/generate.mjs";
 import { markdownFiles } from "../tools/validate-skills.mjs";
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
@@ -28,7 +28,9 @@ describe("models.json shape", () => {
       expect(rolesSection(models)).toMatch(new RegExp(`\\| ${role} \\| \\w+ \\| \\w+ \\| panel \\|`));
     }
     for (const role of raw.roles) expect(role.selection).toBeUndefined();
-    expect(panelSkills(models).sort()).toEqual(["architect", "arena", "interrogate"]);
+    expect(panelSkills(models).sort()).toEqual(["architect", "arena", "interrogate", "show-me-your-work"]);
+    expect(fanOutSkills(models).sort()).toEqual(["architect", "arena", "interrogate"]);
+    expect(poolRoles(models).map((r) => r.role)).toEqual(["arena cross-judge pool", "trail reviewer pool"]);
     expect(models.panel.map((slug) => providerOf(models, slug)).sort()).toEqual(["claude", "codex"]);
     expect(models.panel).toHaveLength(2);
     expect(models.effort).toEqual({ single: "high", strongest: "xhigh" });

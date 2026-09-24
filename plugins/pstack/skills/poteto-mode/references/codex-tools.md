@@ -45,7 +45,7 @@ Skills name defaults as `slug@provider` entries (a single-role default for code/
 
 - Single-model roles: the Codex single-role default `gpt-6-sol@codex`.
 - Roles that default to the strongest Claude model (`bug-fix`, `perf-issue`, `hillclimb`, `strongest judgment`): the Codex strongest-role default `gpt-6-astra@codex`.
-- Mixed-provider panels (`arena`, `architect`, `interrogate`): the adversarial signal comes from model diversity, so keep entries from both providers. The default panel is `claude-opus-5-5@claude`, `gpt-6-sol@codex`, one agent per entry: arena candidates, architect design candidates, and interrogate reviewers. Ordinary work uses `high` effort; difficult work uses `xhigh` and each provider's strongest-role default. If Orca is not installed, the Claude entries cannot start; run-role reports each failed start and asks how to replace that entry.
+- Mixed-provider panels (`arena`, `architect`, `interrogate`): the adversarial signal comes from model diversity, so keep entries from both providers. The default panel is `claude-opus-5-5@claude`, `gpt-6-sol@codex`, one agent per entry: arena candidates, architect design candidates, and interrogate reviewers. A pool (`arena cross-judge pool`, `trail reviewer pool`) shares the panel defaults but is a candidate list: its skill selects one entry whose provider differs from the target it names, and the list length sets no count. Ordinary work uses `high` effort; difficult work uses `xhigh` and each provider's strongest-role default. If Orca is not installed, the Claude entries cannot start; run-role reports each failed start and asks how to replace that entry.
 
 `/setup-pstack` writes the configured model list. On Codex, write single-model roles as Codex entries.
 

@@ -41,7 +41,7 @@ If a candidate fails to produce output, proceed with N-1 and note the dropout in
 
 ## Phase C: Cross-judge
 
-After all Phase B candidates complete, choose one model from the `arena cross-judge pool` in `~/.claude/pstack-models.md` when present. Otherwise choose from the runner defaults in [Models](#models). Prefer a different model family from the parent's. Spawn one readonly judge on that model through the **run-role** skill with role `arena cross-judge pool`, one dispatch on the chosen entry. It sees the rubric and the candidates by path label, scores each criterion, and recommends a base with rationale. It runs in parallel with the parent's reading in Phase D, not with the candidates themselves. Don't spawn the judge while candidates are still writing.
+After all Phase B candidates complete, choose one model from the `arena cross-judge pool` in `~/.claude/pstack-models.md` when present. Otherwise choose from the runner defaults in [Models](#models). Prefer a different model family from the parent's, as run-role's family rule defines it. Spawn one readonly judge on that model through the **run-role** skill with role `arena cross-judge pool`, one dispatch on the chosen entry. It sees the rubric and the candidates by path label, scores each criterion, and recommends a base with rationale. It runs in parallel with the parent's reading in Phase D, not with the candidates themselves. Don't spawn the judge while candidates are still writing.
 
 ## Phase D: Pick a base
 

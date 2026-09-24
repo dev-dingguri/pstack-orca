@@ -493,7 +493,9 @@ export function rolesSection(models) {
     "The default entries of a `single` or `strongest` role are the `claude` host's. Without a sheet line, " +
     "substitute the host provider's single-role or strongest-role default only when that provider has a row in the Providers table. " +
     "If no native provider is known or no row exists, keep the Roles table entries and route them through Orca. " +
-    "A `panel` role keeps its mixed default on every host and runs one agent per entry; " +
+    "A `panel` role keeps its mixed default on every host and runs one agent per entry, except a pool " +
+    `(${poolRoles(models).map((r) => code(r.role)).join(", ")}), from which the calling skill selects one entry per dispatch ` +
+    "under the pool rule in step 1; " +
     "a `strongest` task swaps each entry for its provider's strongest-role default without adding agents.\n\n" +
     `| Task tier | Default effort |\n| --- | --- |\n| single | ${code(models.effort.single)} |\n| strongest | ${code(models.effort.strongest)} |\n\n` +
     "| Role | Skill | Mode | Tier | Default entries |\n| --- | --- | --- | --- | --- |\n" +
@@ -510,10 +512,25 @@ export function strongestRoles(models) {
   return models.roles.filter((r) => r.models.length === 1 && r.models[0] !== models.singleRoleDefault);
 }
 
+// Panel roles that are candidate lists: the calling skill picks one entry per
+// dispatch instead of running one agent per entry. The label suffix is the
+// convention run-role's prose documents.
+export function poolRoles(models) {
+  return models.roles.filter((r) => r.role.endsWith(" pool"));
+}
+
+const onPanel = (models) => (r) => r.models === "panel" || (Array.isArray(r.models) && r.models.join() === models.panel.join());
+
 // The skills whose roles run the mixed-provider panel.
 export function panelSkills(models) {
-  const onPanel = (r) => r.models === "panel" || (Array.isArray(r.models) && r.models.join() === models.panel.join());
-  return [...new Set(models.roles.filter(onPanel).map((r) => r.skill))];
+  return [...new Set(models.roles.filter(onPanel(models)).map((r) => r.skill))];
+}
+
+// The panel skills that fan out one agent per entry, leaving out a skill
+// whose only panel role is a pool.
+export function fanOutSkills(models) {
+  const pools = new Set(poolRoles(models));
+  return [...new Set(models.roles.filter((r) => onPanel(models)(r) && !pools.has(r)).map((r) => r.skill))];
 }
 
 export function setupModelsSection(models) {
@@ -541,6 +558,7 @@ export function overrideSheetBlock(models) {
     "through the run-role skill, and a bare slug must be one the setup skill lists. " +
     "A value of `inherit-parent` or `auto` runs that role on the parent session's model (the `Agent` call omits `model`); " +
     "an alias entry in a panel list still counts toward that panel's fan-out. " +
+    `A pool line (${poolRoles(models).map((r) => code(r.role)).join(", ")}) is a candidate list from which its skill selects one entry; its length sets no count. ` +
     "`session hook: off` stops the Claude Code or Codex SessionStart hook from injecting the poteto-mode mandate; " +
     "any other value, or no line, leaves it on.\n\n" +
     rows +
@@ -551,7 +569,8 @@ export function overrideSheetBlock(models) {
 export function codexModelNamesSection(models) {
   const strongest = strongestRoles(models);
   const codex = models.providers.find((p) => p.id === "codex");
-  const panels = panelSkills(models).map(code).join(", ");
+  const pools = poolRoles(models);
+  const panels = fanOutSkills(models).map(code).join(", ");
   return (
     "Skills name defaults as `slug@provider` entries (a single-role default for code/prose/judgment plus a " +
     "mixed-provider panel; each model-consuming skill lists its own in a Models section). On Codex the host " +
@@ -565,6 +584,8 @@ export function codexModelNamesSection(models) {
     `- Mixed-provider panels (${panels}): the adversarial signal comes from model diversity, so keep entries ` +
     `from both providers. The default panel is ${tagList(models, models.panel)}, one agent per entry: ` +
     "arena candidates, architect design candidates, and interrogate reviewers. " +
+    `A pool (${pools.map((r) => code(r.role)).join(", ")}) shares the panel defaults but is a candidate list: ` +
+    "its skill selects one entry whose provider differs from the target it names, and the list length sets no count. " +
     `Ordinary work uses ${code(models.effort.single)} effort; difficult work uses ${code(models.effort.strongest)} and each provider's strongest-role default. ` +
     "If Orca is not installed, the Claude entries cannot start; " +
     "run-role reports each failed start and asks how to replace that entry.\n\n" +

@@ -40,7 +40,7 @@ When inactive, do not add a poteto-mode activation instruction. This records the
 
 Read the role line from the runtime's override sheet (`~/.claude/pstack-models.md` on Claude Code, `~/.codex/pstack-models.md` on Codex). Without a line, use the default entries in the [Roles](#roles) table. For a `single` or `strongest` role, substitute the host provider's default only when that provider has a row in the Providers table. If no native provider is known or no row exists, keep the Roles table entries and route them through Orca as step 2 prescribes.
 
-An explicit model or agent-count request for this invocation takes precedence over the sheet. Keep the role's mode unchanged. A `panel` role runs one agent per entry, so the panel length sets the count; more agents need an explicit request or a longer override list.
+An explicit model or agent-count request for this invocation takes precedence over the sheet. Keep the role's mode unchanged. A `panel` role runs one agent per entry, so the panel length sets the count; more agents need an explicit request or a longer override list. A pool is the exception, see below.
 
 With no override, a `strongest` task selects the strongest-role default for each already-selected provider without adding agents. For a `panel` role this swaps every entry for its provider's strongest-role default. Use the effort from the table below for the task's tier, unless the user explicitly specifies an effort. A role override changes the model entries, not the default effort. Aliases inherit the actual parent model.
 
@@ -49,6 +49,10 @@ Each entry is one of:
 - `slug@provider`, a model and the provider that runs it natively.
 - A bare slug. Look its provider up in the setup skill's Models section. A bare slug listed nowhere has no provider; stop and ask the user which provider runs it (`AskUserQuestion` on Claude Code, a plain question on Codex), then continue.
 - `inherit-parent` or `auto`. The entry runs natively on the parent session's model; omit `model` on the call.
+
+A model family is a provider. Two entries are in different families only when their providers differ; another tier or effort of the same provider is the same family and counts as reduced diversity, which the result must say. Resolve an alias to the actual model before comparing providers. Where a skill says "different model family", it means this rule.
+
+A role whose label ends in `pool` is a candidate list, not a fan-out, and an override line for it is still a candidate list whose length sets no count. The calling skill names the comparison target (arena compares with the parent, the trail review with the model that did the work) and selects exactly one entry whose provider differs from that target. When every configured entry shares the target's provider, select one entry and say in the result that diversity was reduced.
 
 ### 2. Decide the path per dispatch
 
@@ -96,7 +100,7 @@ Native results arrive in the call's response. For an Orca worker, match the comp
 
 ## Roles
 
-Stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). A matching role line in the override sheet replaces the default entries; the mode is fixed per role. The default entries of a `single` or `strongest` role are the `claude` host's. Without a sheet line, substitute the host provider's single-role or strongest-role default only when that provider has a row in the Providers table. If no native provider is known or no row exists, keep the Roles table entries and route them through Orca. A `panel` role keeps its mixed default on every host and runs one agent per entry; a `strongest` task swaps each entry for its provider's strongest-role default without adding agents.
+Stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). A matching role line in the override sheet replaces the default entries; the mode is fixed per role. The default entries of a `single` or `strongest` role are the `claude` host's. Without a sheet line, substitute the host provider's single-role or strongest-role default only when that provider has a row in the Providers table. If no native provider is known or no row exists, keep the Roles table entries and route them through Orca. A `panel` role keeps its mixed default on every host and runs one agent per entry, except a pool (`arena cross-judge pool`, `trail reviewer pool`), from which the calling skill selects one entry per dispatch under the pool rule in step 1; a `strongest` task swaps each entry for its provider's strongest-role default without adding agents.
 
 | Task tier | Default effort |
 | --- | --- |
@@ -122,6 +126,7 @@ Stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs
 | swarm workers | swarm | execute | single | `claude-opus-5-5@claude` |
 | architect runners | architect | consult | panel | `claude-opus-5-5@claude`, `gpt-6-sol@codex` |
 | interrogate reviewers | interrogate | consult | panel | `claude-opus-5-5@claude`, `gpt-6-sol@codex` |
+| trail reviewer pool | show-me-your-work | consult | panel | `claude-opus-5-5@claude`, `gpt-6-sol@codex` |
 
 ### Providers
 

@@ -111,6 +111,16 @@ const rules = [
     phrase: "through the **run-role** skill with role `arena cross-judge pool`",
   },
   {
+    source: "pstack-orca trail reviewer through run-role",
+    file: "show-me-your-work/SKILL.md",
+    phrase: "through the **run-role** skill with role `trail reviewer pool`",
+  },
+  {
+    source: "pstack-orca model family is the provider",
+    file: "run-role/SKILL.md",
+    phrase: "A model family is a provider.",
+  },
+  {
     source: "pstack-orca swarm workers through run-role",
     file: "swarm/SKILL.md",
     phrase: "through the **run-role** skill with role `swarm workers`",

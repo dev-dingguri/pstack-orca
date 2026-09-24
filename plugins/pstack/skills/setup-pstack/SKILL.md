@@ -33,7 +33,7 @@ The default role-to-model mapping is the rule shape shown in the Write the overr
 
 ### 3. Map and confirm
 
-Show every role with its current entries, marking any real slug not in the detected or confirmed set as needing a choice. Ask whether to accept as-is or change specific roles, offering the confirmed models of every provider plus `inherit-parent` and `auto` as the options. Write every real entry as `slug@provider`. Prefer `AskUserQuestion` over free text. For panel roles (arena runners, architect runners, interrogate reviewers) the value is a list, and one subagent runs per entry, alias entries included, so the list length sets the count; keep one entry per provider unless the user wants more. `arena cross-judge pool` is also a list, but Arena selects one value from it whose model family differs from the parent's when possible. `swarm workers` is the default model for every worker unless a race or comparison assigns another model per arm. Explain run-role's ordinary and difficult effort defaults; explicit user effort choices take precedence.
+Show every role with its current entries, marking any real slug not in the detected or confirmed set as needing a choice. Ask whether to accept as-is or change specific roles, offering the confirmed models of every provider plus `inherit-parent` and `auto` as the options. Write every real entry as `slug@provider`. Prefer `AskUserQuestion` over free text. For panel roles (arena runners, architect runners, interrogate reviewers) the value is a list, and one subagent runs per entry, alias entries included, so the list length sets the count; keep one entry per provider unless the user wants more. `arena cross-judge pool` and `trail reviewer pool` are also lists, but their skills select one value from each, the one whose provider differs from the model that produced the work (run-role's family rule); the list length does not set a count. `swarm workers` is the default model for every worker unless a race or comparison assigns another model per arm. Explain run-role's ordinary and difficult effort defaults; explicit user effort choices take precedence.
 
 ### 4. Choose whether the session hook routes tasks
 
@@ -50,7 +50,7 @@ Write the current runtime's sheet with the shape below. Overwrite the whole file
 ```markdown
 # pstack model configuration
 
-Per-role model overrides for pstack skills. Each pstack SKILL.md names its defaults in a Models section; the values here override those defaults. Delete a line to fall back to the skill default. Write each entry as `slug@provider`; an entry whose provider is not the host runs as an Orca worker through the run-role skill, and a bare slug must be one the setup skill lists. A value of `inherit-parent` or `auto` runs that role on the parent session's model (the `Agent` call omits `model`); an alias entry in a panel list still counts toward that panel's fan-out. `session hook: off` stops the Claude Code or Codex SessionStart hook from injecting the poteto-mode mandate; any other value, or no line, leaves it on.
+Per-role model overrides for pstack skills. Each pstack SKILL.md names its defaults in a Models section; the values here override those defaults. Delete a line to fall back to the skill default. Write each entry as `slug@provider`; an entry whose provider is not the host runs as an Orca worker through the run-role skill, and a bare slug must be one the setup skill lists. A value of `inherit-parent` or `auto` runs that role on the parent session's model (the `Agent` call omits `model`); an alias entry in a panel list still counts toward that panel's fan-out. A pool line (`arena cross-judge pool`, `trail reviewer pool`) is a candidate list from which its skill selects one entry; its length sets no count. `session hook: off` stops the Claude Code or Codex SessionStart hook from injecting the poteto-mode mandate; any other value, or no line, leaves it on.
 
 feature, refactoring: claude-opus-5-5@claude
 bug-fix: claude-fable-5-1@claude
@@ -69,6 +69,7 @@ arena cross-judge pool: claude-opus-5-5@claude, gpt-6-sol@codex
 swarm workers: claude-opus-5-5@claude
 architect runners: claude-opus-5-5@claude, gpt-6-sol@codex
 interrogate reviewers: claude-opus-5-5@claude, gpt-6-sol@codex
+trail reviewer pool: claude-opus-5-5@claude, gpt-6-sol@codex
 
 session hook: on
 ```

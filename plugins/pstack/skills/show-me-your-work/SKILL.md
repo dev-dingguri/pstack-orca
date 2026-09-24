@@ -63,14 +63,14 @@ Fix the log, not the story. If the work diverged from what a row claims, the row
 
 ## Cross-model review of the trail
 
-Before handing back, spawn a subagent on a different model family from the one that did the work. Self-review is not a substitute. The subagent reads the audit trail and the run's transcript, then flags what the user should pay attention to. Not a redo of the work, a scan for what's suboptimal or risky.
+Before handing back, run one reviewer through the **run-role** skill with role `trail reviewer pool`, one dispatch on the entry whose provider differs from the model that did the work (run-role's family rule). Resolve aliases to the actual model first; when authorship is unknown or mixed, compare with the current session's model and say so in the Attention section. Self-review is not a substitute. When every configured entry shares the author's provider, run one of them and say the diversity was reduced. The brief names the log path and the transcript path. The reviewer reads the audit trail and the run's transcript, then flags what the user should pay attention to. Not a redo of the work, a scan for what's suboptimal or risky. If the reviewer cannot start, follow run-role's failed-start step; a dropped reviewer leaves the review incomplete, and the reply says so.
 
 - Decisions logged with weak or absent evidence.
 - Verification steps skipped or claimed without proof in the transcript.
 - Choices that look risky in hindsight (premature, scope-creeping, papering over a symptom).
 - Gaps the user would otherwise miss on a casual skim.
 
-Every reply for a run that produced a trail ends with an "Attention" section. Lead with the reviewer's model on its own line (`reviewed by <model>`), then list each flag pointing to specific rows or moments. "No flags" is a valid value; the model name is not.
+Every reply for a run that produced a trail ends with an "Attention" section. Lead with the reviewer's model on its own line (`reviewed by <model>`), then list each flag pointing to specific rows or moments. "No flags" is a valid value; the model name is not, and neither is "No flags" from a reviewer that never ran.
 
 ## Reviewing the trail
 
@@ -79,3 +79,9 @@ Read top to bottom, follow the evidence pointers, spot-check. GitHub renders a c
 ## Composing this skill
 
 Other skills route their audit trail here instead of inventing one. Reference it by name and let it own the format; don't restate the columns.
+
+## Models
+
+Role defaults, stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). A matching role line in `~/.claude/pstack-models.md` overrides each at runtime; see `/setup-pstack`. Each entry is `slug@provider`; the **run-role** skill runs an entry natively when its provider is the host and as an Orca worker otherwise, in the mode shown.
+
+- trail reviewer pool: `claude-opus-5-5@claude`, `gpt-6-sol@codex` (consult)

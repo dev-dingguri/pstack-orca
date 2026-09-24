@@ -2,6 +2,14 @@
 
 This port applies the Cursor → Claude Code substitutions in skill bodies. Earlier drafts left them flagged; this revision resolves them. A later pass added a Codex build that shares the same skills; see [Codex port](#codex-port) below.
 
+## 0.13.0 - name the model family and route the trail reviewer
+
+External feedback: show-me-your-work's "different model family" could be read as another Claude tier or as another provider, and the reviewer had no run-role route. Both sentences were upstream text the fork had never defined.
+
+- `run-role` step 1 defines a model family as a provider. Another tier or effort of the same provider is the same family and counts as reduced diversity. The rule also names `pool` roles: a candidate list from which the calling skill selects one entry per dispatch, the one whose provider differs from the target that skill names (arena compares with the parent, the trail review with the model that did the work); an override line for a pool sets no count. The definition sits outside the generated Roles section; `arena` and `setup-pstack` point at it.
+- `show-me-your-work` runs its trail reviewer through `run-role` with the new `trail reviewer pool` role (consult, the shared panel). A failed start follows run-role's failed-start step, and a reviewer that never ran cannot report "No flags".
+- The generator derives pool roles from the `pool` label suffix and states the one-entry exception in the run-role Roles prose, the override-sheet preamble, and the Codex model-names section, whose panel list names only the fan-out skills. `poteto-mode`'s "different model" sentence is upstream wording and is unchanged.
+
 ## 0.12.0 - design and review on the one-per-provider panel
 
 Restores the panel structure of [Cursor pstack](https://github.com/cursor/plugins/tree/main/pstack) for design and review, sized to two providers: one agent per provider in place of Cursor's one per vendor. Cursor pstack is the reference for model policy in this fork; pstack-claude supplies the skill text. The 0.11.0 single-designer and opposite-provider-reviewer selection is removed.
