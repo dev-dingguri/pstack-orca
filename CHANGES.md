@@ -2,6 +2,10 @@
 
 This port applies the Cursor → Claude Code substitutions in skill bodies. Earlier drafts left them flagged; this revision resolves them. A later pass added a Codex build that shares the same skills; see [Codex port](#codex-port) below.
 
+## 0.13.2 - restore GPT-6 Sol by default
+
+- Restore GPT-6 Sol as the Codex single-role default and the Codex entry in panels and reviewer pools. Regenerate instructions and examples from `models.json`.
+
 ## 0.13.1 - use GPT-5.6 Sol by default
 
 - Replace GPT-6 Sol with GPT-5.6 Sol as the Codex single-role default and the Codex entry in panels and reviewer pools, as requested by the user. Update generated instructions and examples from `models.json`.
