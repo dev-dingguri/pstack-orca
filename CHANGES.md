@@ -2,6 +2,10 @@
 
 This port applies the Cursor → Claude Code substitutions in skill bodies. Earlier drafts left them flagged; this revision resolves them. A later pass added a Codex build that shares the same skills; see [Codex port](#codex-port) below.
 
+## 0.13.1 - use GPT-5.6 Sol by default
+
+- Replace GPT-6 Sol with GPT-5.6 Sol as the Codex single-role default and the Codex entry in panels and reviewer pools, as requested by the user. Update generated instructions and examples from `models.json`.
+
 ## 0.13.0 - name the model family and route the trail reviewer
 
 External feedback: show-me-your-work's "different model family" could be read as another Claude tier or as another provider, and the reviewer had no run-role route. Both sentences were upstream text the fork had never defined.

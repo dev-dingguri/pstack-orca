@@ -39,7 +39,7 @@ Launch all reviewers in a single message through the **run-role** skill with rol
 | Subagent | Default model |
 |----------|---------------|
 | Reviewer A | `claude-opus-5-5@claude` |
-| Reviewer B | `gpt-6-sol@codex` |
+| Reviewer B | `gpt-5.6-sol@codex` |
 
 For each reviewer:
 - `subagent_type`: `general-purpose`

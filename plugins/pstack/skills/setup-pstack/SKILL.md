@@ -64,12 +64,12 @@ why investigators: claude-opus-5-5@claude
 why synthesizer: claude-opus-5-5@claude
 reflect tooling: claude-opus-5-5@claude
 reflect judgment, divergent, synthesizer: claude-opus-5-5@claude
-arena runners: claude-opus-5-5@claude, gpt-6-sol@codex
-arena cross-judge pool: claude-opus-5-5@claude, gpt-6-sol@codex
+arena runners: claude-opus-5-5@claude, gpt-5.6-sol@codex
+arena cross-judge pool: claude-opus-5-5@claude, gpt-5.6-sol@codex
 swarm workers: claude-opus-5-5@claude
-architect runners: claude-opus-5-5@claude, gpt-6-sol@codex
-interrogate reviewers: claude-opus-5-5@claude, gpt-6-sol@codex
-trail reviewer pool: claude-opus-5-5@claude, gpt-6-sol@codex
+architect runners: claude-opus-5-5@claude, gpt-5.6-sol@codex
+interrogate reviewers: claude-opus-5-5@claude, gpt-5.6-sol@codex
+trail reviewer pool: claude-opus-5-5@claude, gpt-5.6-sol@codex
 
 session hook: on
 ```
@@ -102,5 +102,5 @@ Stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs
 
 - Available Claude models (provider `claude`, native on Claude Code): Opus 5.5 (`claude-opus-5-5`), Opus 5 (`claude-opus-5`), Opus 4.8 (`claude-opus-4-8`), Opus 4.6 (`claude-opus-4-6`), Fable 5.1 (`claude-fable-5-1`), Sonnet 5 (`claude-sonnet-5`), Sonnet 4.6 (`claude-sonnet-4-6`), Haiku 4.5 (`claude-haiku-4-5`)
 - Available Codex models (provider `codex`, native on Codex): GPT-6 Astra (`gpt-6-astra`), GPT-6 Sol (`gpt-6-sol`), GPT-5.6 Sol (`gpt-5.6-sol`), GPT-5.6 Terra (`gpt-5.6-terra`), GPT-5.6 Luna (`gpt-5.6-luna`)
-- Default panel: `claude-opus-5-5@claude`, `gpt-6-sol@codex`
+- Default panel: `claude-opus-5-5@claude`, `gpt-5.6-sol@codex`
 - Single-role default: `claude-opus-5-5@claude`

@@ -77,5 +77,5 @@ One synthesized artifact. One short synthesis note alongside, naming the base, t
 
 Role defaults, stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). A matching role line in `~/.claude/pstack-models.md` overrides each at runtime; see `/setup-pstack`. Each entry is `slug@provider`; the **run-role** skill runs an entry natively when its provider is the host and as an Orca worker otherwise, in the mode shown.
 
-- arena runners: `claude-opus-5-5@claude`, `gpt-6-sol@codex` (execute)
-- arena cross-judge pool: `claude-opus-5-5@claude`, `gpt-6-sol@codex` (consult)
+- arena runners: `claude-opus-5-5@claude`, `gpt-5.6-sol@codex` (execute)
+- arena cross-judge pool: `claude-opus-5-5@claude`, `gpt-5.6-sol@codex` (consult)
