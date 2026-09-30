@@ -2,6 +2,12 @@
 
 This port applies the Cursor → Claude Code substitutions in skill bodies. Earlier drafts left them flagged; this revision resolves them. A later pass added a Codex build that shares the same skills; see [Codex port](#codex-port) below.
 
+## 0.13.3 - one read and one Enter after an Orca worker start
+
+User report: an Orca worker sometimes received its prompt without submitting it. `orca-delegate` sent Enter only when the read positively showed a pasted-content placeholder, so a composer that looked different left the prompt unsent.
+
+- After launch, the caller reads the worker once. If no agent turn started, it sends one bare Enter to a confirmed local terminal without matching a specific composer state, and skips the confirming second read. The Enter is still skipped when the Dispatch already failed or was revoked, and the prompt text and a second Enter are never sent.
+
 ## 0.13.2 - restore GPT-6 Sol by default
 
 - Restore GPT-6 Sol as the Codex single-role default and the Codex entry in panels and reviewer pools. Regenerate instructions and examples from `models.json`.
