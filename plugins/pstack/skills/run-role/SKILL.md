@@ -121,16 +121,16 @@ Stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs
 | why synthesizer | why | consult | single | `claude-opus-5-5@claude` |
 | reflect tooling | reflect | consult | single | `claude-opus-5-5@claude` |
 | reflect judgment, divergent, synthesizer | reflect | consult | single | `claude-opus-5-5@claude` |
-| arena runners | arena | execute | panel | `claude-opus-5-5@claude`, `gpt-6-sol@codex` |
-| arena cross-judge pool | arena | consult | panel | `claude-opus-5-5@claude`, `gpt-6-sol@codex` |
+| arena runners | arena | execute | panel | `claude-opus-5-5@claude`, `gpt-6.1-sol@codex` |
+| arena cross-judge pool | arena | consult | panel | `claude-opus-5-5@claude`, `gpt-6.1-sol@codex` |
 | swarm workers | swarm | execute | single | `claude-opus-5-5@claude` |
-| architect runners | architect | consult | panel | `claude-opus-5-5@claude`, `gpt-6-sol@codex` |
-| interrogate reviewers | interrogate | consult | panel | `claude-opus-5-5@claude`, `gpt-6-sol@codex` |
-| trail reviewer pool | show-me-your-work | consult | panel | `claude-opus-5-5@claude`, `gpt-6-sol@codex` |
+| architect runners | architect | consult | panel | `claude-opus-5-5@claude`, `gpt-6.1-sol@codex` |
+| interrogate reviewers | interrogate | consult | panel | `claude-opus-5-5@claude`, `gpt-6.1-sol@codex` |
+| trail reviewer pool | show-me-your-work | consult | panel | `claude-opus-5-5@claude`, `gpt-6.1-sol@codex` |
 
 ### Providers
 
 | Provider | Native host | Single-role default | Strongest-role default |
 | --- | --- | --- | --- |
 | `claude` | Claude Code | `claude-opus-5-5@claude` | `claude-fable-5-1@claude` |
-| `codex` | Codex | `gpt-6-sol@codex` | `gpt-6-astra@codex` |
+| `codex` | Codex | `gpt-6.1-sol@codex` | `gpt-6-astra@codex` |

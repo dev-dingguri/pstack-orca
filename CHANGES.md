@@ -2,6 +2,10 @@
 
 This port applies the Cursor → Claude Code substitutions in skill bodies. Earlier drafts left them flagged; this revision resolves them. A later pass added a Codex build that shares the same skills; see [Codex port](#codex-port) below.
 
+## 0.13.4 - use GPT-6.1 Sol by default
+
+- Add GPT-6.1 Sol to the model catalog and use it as the Codex single-role default and the Codex entry in panels, reviewer pools, and examples. Keep GPT-6 Sol available for explicit overrides. Regenerate instructions from `models.json`.
+
 ## 0.13.3 - one read and one Enter after an Orca worker start
 
 User report: an Orca worker sometimes received its prompt without submitting it. `orca-delegate` sent Enter only when the read positively showed a pasted-content placeholder, so a composer that looked different left the prompt unsent.

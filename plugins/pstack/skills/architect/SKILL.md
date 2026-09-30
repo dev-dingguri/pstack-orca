@@ -91,4 +91,4 @@ The caller's usage is written first and the type sketch derived from it. One fil
 
 Role defaults, stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). A matching role line in `~/.claude/pstack-models.md` overrides each at runtime; see `/setup-pstack`. Each entry is `slug@provider`; the **run-role** skill runs an entry natively when its provider is the host and as an Orca worker otherwise, in the mode shown.
 
-- architect runners: `claude-opus-5-5@claude`, `gpt-6-sol@codex` (consult)
+- architect runners: `claude-opus-5-5@claude`, `gpt-6.1-sol@codex` (consult)

@@ -346,7 +346,7 @@ describe("Codex model names", () => {
       expect(section).toContain(role);
     }
     expect(section).toContain("run-role");
-    expect(section).toContain("gpt-6-sol@codex");
+    expect(section).toContain("gpt-6.1-sol@codex");
     for (const slug of models.panel) expect(section).toContain(`${slug}@`);
     expect(section).not.toContain("`how`");
     expect(section).not.toContain("`reflect`");

@@ -1,11 +1,11 @@
 {
   "providers": [
     { "id": "claude", "label": "Claude", "host": "Claude Code", "singleRoleDefault": "claude-opus-5-5", "strongestRoleDefault": "claude-fable-5-1" },
-    { "id": "codex", "label": "Codex", "host": "Codex", "singleRoleDefault": "gpt-6-sol", "strongestRoleDefault": "gpt-6-astra" }
+    { "id": "codex", "label": "Codex", "host": "Codex", "singleRoleDefault": "gpt-6.1-sol", "strongestRoleDefault": "gpt-6-astra" }
   ],
   "singleRoleDefault": "claude-opus-5-5",
   "effort": { "single": "high", "strongest": "xhigh" },
-  "panel": ["claude-opus-5-5", "gpt-6-sol"],
+  "panel": ["claude-opus-5-5", "gpt-6.1-sol"],
   "available": [
     { "label": "Opus 5.5", "slug": "claude-opus-5-5", "provider": "claude" },
     { "label": "Opus 5", "slug": "claude-opus-5", "provider": "claude" },
@@ -16,6 +16,7 @@
     { "label": "Sonnet 4.6", "slug": "claude-sonnet-4-6", "provider": "claude" },
     { "label": "Haiku 4.5", "slug": "claude-haiku-4-5", "provider": "claude" },
     { "label": "GPT-6 Astra", "slug": "gpt-6-astra", "provider": "codex" },
+    { "label": "GPT-6.1 Sol", "slug": "gpt-6.1-sol", "provider": "codex" },
     { "label": "GPT-6 Sol", "slug": "gpt-6-sol", "provider": "codex" },
     { "label": "GPT-5.6 Sol", "slug": "gpt-5.6-sol", "provider": "codex" },
     { "label": "GPT-5.6 Terra", "slug": "gpt-5.6-terra", "provider": "codex" },
@@ -42,8 +43,8 @@
     { "role": "trail reviewer pool", "models": "panel", "skill": "show-me-your-work", "mode": "consult" }
   ],
   "codex": {
-    "singleRoleExample": "gpt-6-sol",
+    "singleRoleExample": "gpt-6.1-sol",
     "strongestRoleExample": "gpt-6-astra",
-    "panelQuad": ["gpt-6-astra", "claude-opus-5-5", "gpt-6-sol", "claude-fable-5-1"]
+    "panelQuad": ["gpt-6-astra", "claude-opus-5-5", "gpt-6.1-sol", "claude-fable-5-1"]
   }
 }
