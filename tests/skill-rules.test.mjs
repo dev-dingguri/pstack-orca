@@ -101,6 +101,21 @@ const rules = [
     phrase: "Every role dispatch goes through the run-role skill.",
   },
   {
+    source: "pstack-orca poteto-agent helpers get run-role's effort agent",
+    file: "poteto-mode/SKILL.md",
+    phrase: "On Claude Code, send every native subagent through it, `pstack:poteto-agent` helpers included",
+  },
+  {
+    source: "pstack-orca native effort comes from the effort agent",
+    file: "run-role/SKILL.md",
+    phrase: "`subagent_type` set to `pstack:effort-<effort>` for the resolved effort",
+  },
+  {
+    source: "pstack-orca Claude Code has no per-call readonly",
+    file: "run-role/SKILL.md",
+    phrase: "drop a prescribed `readonly` and state step 3's `consult` limit in the brief instead.",
+  },
+  {
     source: "pstack-orca arena runners through run-role",
     file: "arena/SKILL.md",
     phrase: "through the **run-role** skill with role `arena runners`",

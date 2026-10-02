@@ -42,6 +42,23 @@ describe("models.json shape", () => {
     expect(new Set(models.panel).size).toBe(models.panel.length);
   });
 
+  test("every effort a native Claude Code dispatch can request has an effort agent", () => {
+    const levels = new Set(["low", "medium", "high", "xhigh", "max", ...Object.values(models.effort)]);
+    for (const level of levels) {
+      const agent = readFileSync(join(repoRoot, `plugins/pstack/agents/effort-${level}.md`), "utf8");
+      const frontmatter = agent.split("---")[1];
+      expect(frontmatter).toContain(`\nname: effort-${level}\n`);
+      expect(frontmatter).toContain(`\neffort: ${level}\n`);
+      expect(frontmatter).not.toMatch(/\n(model|tools):/);
+    }
+  });
+
+  test("every Claude model maps to an Agent tool family alias", () => {
+    for (const { slug, provider } of models.available) {
+      if (provider === "claude") expect(slug).toMatch(/^claude-(opus|fable|sonnet|haiku)-/);
+    }
+  });
+
   test("every role names an available model or the panel, and a skill directory that exists", () => {
     const labels = new Set();
     for (const role of raw.roles) {
