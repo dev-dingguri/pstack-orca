@@ -2,6 +2,16 @@
 
 This port applies the Cursor → Claude Code substitutions in skill bodies. Earlier drafts left them flagged; this revision resolves them. A later pass added a Codex build that shares the same skills; see [Codex port](#codex-port) below.
 
+## 0.14.0 - set effort on native Claude Code dispatches
+
+User report: on Claude Code, the main agent and its subagents could not run at different reasoning efforts. A local proxy that logged each API request showed the cause. The `Agent` tool has no effort parameter, so every native dispatch inherited the session effort. Its `model` accepts only `opus`, `fable`, `sonnet`, or `haiku`, so the full slug run-role passed failed input validation. The same proxy showed that a plugin agent's `effort` frontmatter reaches the request and stays when the call sets a `model` alias.
+
+- Add `agents/effort-<level>.md` for `low`, `medium`, `high`, `xhigh`, and `max`. Each sets only `effort`, so the call's `model` and full tool access still apply.
+- `run-role` dispatches a native Claude Code entry as `pstack:effort-<effort>` in place of a prescribed `general-purpose` or `pstack:poteto-agent`, and passes the entry's family alias as `model`. An entry that names an older version of its family is reported as unconfirmed.
+- `reflect` leaves the native `subagent_type` and `model` to run-role instead of naming `general-purpose` and the full slug.
+- `poteto-mode` sends every native Claude Code subagent through run-role, `pstack:poteto-agent` helpers included, so each one gets an effort agent. The upstream sentence that names `pstack:poteto-agent` is unchanged.
+- `run-role` no longer passes `readonly`, which the `Agent` tool lacks, matching this port's earlier decision to drop it. A prescribed `readonly` in upstream skill text is dropped at dispatch, and the brief states the `consult` limit instead.
+
 ## 0.13.4 - use GPT-6.1 Sol by default
 
 - Add GPT-6.1 Sol to the model catalog and use it as the Codex single-role default and the Codex entry in panels, reviewer pools, and examples. Keep GPT-6 Sol available for explicit overrides. Regenerate instructions from `models.json`.

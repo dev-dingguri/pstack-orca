@@ -29,7 +29,7 @@ It covers the three layouts (flat `<id>.jsonl`, nested `<id>/<id>.jsonl`, subage
 
 ### 2. Spawn three reviewers in parallel
 
-One message, three dispatches through the **run-role** skill (roles `reflect judgment, divergent, synthesizer` and `reflect tooling`); a native dispatch is an `Agent` call with `subagent_type: "general-purpose"` and an explicit `model:` (the entry's slug), and a cross-provider dispatch is an Orca worker whose contract permits the result file. Reviewers need MCP access for context lookups (tickets, chat threads, observability traces referenced in the transcript); pick a subagent_type that retains MCP access. The prompt forbids file writes; the parent applies edits.
+One message, three dispatches through the **run-role** skill (roles `reflect judgment, divergent, synthesizer` and `reflect tooling`); a native dispatch is an `Agent` call whose `subagent_type` and `model` run-role sets, and a cross-provider dispatch is an Orca worker whose contract permits the result file. Reviewers need MCP access for context lookups (tickets, chat threads, observability traces referenced in the transcript); pick a subagent_type that retains MCP access. The prompt forbids file writes; the parent applies edits.
 
 | Lens | `model` | Prompt template |
 |---|---|---|
@@ -41,7 +41,7 @@ Pass each template verbatim, substituting the transcript path or digest where ma
 
 ### 3. Synthesize
 
-One dispatch through the **run-role** skill with role `reflect judgment, divergent, synthesizer`; a native entry is an `Agent` call with `subagent_type: "general-purpose"` using your configured reflect-judgment model (default in [Models](#models)). Pick a subagent_type that retains MCP access — the synthesizer's quality check includes spot-verifying citations, which can require MCP access. Use `references/synthesizer.md` verbatim, with each reviewer's full output inlined where marked. The synthesizer returns a structured Accepted / Rejected / Backlog list.
+One dispatch through the **run-role** skill with role `reflect judgment, divergent, synthesizer`; a native entry is an `Agent` call whose `subagent_type` and `model` run-role sets from your configured reflect-judgment model (default in [Models](#models)). Pick a subagent_type that retains MCP access — the synthesizer's quality check includes spot-verifying citations, which can require MCP access. Use `references/synthesizer.md` verbatim, with each reviewer's full output inlined where marked. The synthesizer returns a structured Accepted / Rejected / Backlog list.
 
 ### 4. Structural enforcement check
 
