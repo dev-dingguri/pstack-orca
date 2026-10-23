@@ -46,7 +46,7 @@ An explicit model or agent-count request for this invocation takes precedence ov
 
 With no override, a `strongest` task selects the strongest-role default for each already-selected provider without adding agents. For a `panel` role this swaps every entry for its provider's strongest-role default. Aliases inherit the actual parent model.
 
-Resolve each dispatch's effort in this order: an effort the user explicitly requests for this invocation, the entry's ` @level`, the sheet's `default effort` line, then the default for the task's tier from the table below. `session` sets no effort, so the dispatch keeps the runtime's setting. A role override changes the model entries, not the tier default.
+Resolve each dispatch's effort in this order: an effort the user explicitly requests for this invocation, the entry's effort suffix, the sheet's `default effort` line, then the default for the task's tier from the table below. `session` sets no effort, so the dispatch keeps the runtime's setting. A role override changes the model entries, not the tier default.
 
 Each entry is one of the following, optionally followed by a space and an effort level (`opus@claude @xhigh`). Strip the level before reading the entry.
 

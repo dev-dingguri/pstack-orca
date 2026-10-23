@@ -126,7 +126,7 @@ export function effortSection(levels) {
   return (
     "A role value in the override sheet may name a reasoning effort after its model, as in `opus@claude @xhigh`. " +
     "Levels on Claude Code: " + levels.map(code).join(", ") + ". Which ones apply depends on the model. " +
-    "A value without ` @` takes the sheet's `default effort` line, a level or `session`; with no such line, " +
+    "A value with no effort suffix takes the sheet's `default effort` line, a level or `session`; with no such line, " +
     "it takes the task tier's default effort from the **run-role** skill's Roles section. `session` sets no effort, " +
     "so the dispatch is the usual one. Strip the effort suffix before reading the model, and leave the provider tag " +
     "(`@claude`, `@codex`, written without a space) to run-role. `inherit-parent` or `auto` still omits `model` " +

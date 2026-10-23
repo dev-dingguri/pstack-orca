@@ -51,7 +51,7 @@ On Claude Code and Codex, the plugin's `SessionStart` hook injects the poteto-mo
 
 ### 5. Validate
 
-Every real slug written must be in the detected or confirmed set and carry its provider. `inherit-parent` and `auto` always pass. Validate the slug without its ` @<level>` suffix, and the level against the effort levels in [Models](#models). A `default effort` value is one of those levels or `session`. On Codex, the levels are the `reasoning_effort` values your Codex models accept instead. If a chosen real slug or level is not available, stop and ask again.
+Every real slug written must be in the detected or confirmed set and carry its provider. `inherit-parent` and `auto` always pass. Validate the slug without its effort suffix (`@<level>` after a space), and the level against the effort levels in [Models](#models). A `default effort` value is one of those levels or `session`. On Codex, the levels are the `reasoning_effort` values your Codex models accept instead. If a chosen real slug or level is not available, stop and ask again.
 
 ### 6. Write the override sheet
 
