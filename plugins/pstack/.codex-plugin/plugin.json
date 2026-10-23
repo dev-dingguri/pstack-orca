@@ -1,7 +1,7 @@
 {
   "name": "pstack",
-  "version": "0.14.0",
-  "description": "if you want to go fast, go deep first. pstack helps you write less, but higher quality code. rigorous agent workflows you can parallelize with confidence. Codex build of the Orca multi-provider fork; skills are shared, tool names resolve via skills/poteto-mode/references/codex-tools.md. Original pstack by Lauren Tan (poteto).",
+  "version": "0.15.0",
+  "description": "If you want to go fast, go deep first. pstack helps you write less, but higher quality code. rigorous agent workflows you can parallelize with confidence. Codex build of the Orca multi-provider fork; skills are shared, tool names resolve via skills/poteto-mode/references/codex-tools.md. Original pstack by Lauren Tan (poteto).",
   "author": {
     "name": "dev-dingguri",
     "email": "dev.dingguri@gmail.com",
@@ -31,7 +31,7 @@
     "multi-provider"
   ],
   "skills": "./skills/",
-  "hooks": "./hooks/hooks.json",
+  "hooks": "./hooks/codex-hooks.json",
   "interface": {
     "displayName": "pstack",
     "shortDescription": "Rigorous, parallelizable agent workflows: go deep first, write less, verify everything",
@@ -48,6 +48,8 @@
       "Interrogate this diff with multiple models."
     ],
     "websiteURL": "https://github.com/dev-dingguri/pstack-orca",
-    "brandColor": "#7C3AED"
+    "brandColor": "#7C3AED",
+    "composerIcon": "./assets/pstack-icon.png",
+    "logo": "./assets/pstack-icon.png"
   }
 }

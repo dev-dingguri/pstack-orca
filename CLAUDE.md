@@ -10,7 +10,7 @@ These rules apply to every coding agent working in this repository. Read `CONTRI
 
 ## Sources of truth
 
-- Edit model defaults in `plugins/pstack/models.json` and generation rules in `tools/generate.mjs`. Run `bun tools/generate.mjs` to update generated regions; do not edit those regions by hand.
+- Edit model defaults in `plugins/pstack/models.json` and generation rules in `tools/generate.mjs`. The fork's renderers and `models.json` checks live in `tools/fork.mjs`. Run `bun tools/generate.mjs` to update generated regions; do not edit those regions by hand.
 - `plugins/pstack/skills/run-role/SKILL.md` owns role resolution and native versus Orca dispatch.
 - `plugins/pstack/skills/orca-delegate/SKILL.md` and its references own Orca delegation policy and file delivery. Follow the installed `orca-cli` and `orchestration` skills for executable selection, guide loading, and worker lifecycle.
 - Keep review judgment in the existing review skills. Do not introduce another approval or review process in repository instructions.

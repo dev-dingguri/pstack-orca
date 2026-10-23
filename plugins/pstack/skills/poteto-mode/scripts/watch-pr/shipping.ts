@@ -1,5 +1,14 @@
-import { runJson } from "./github.ts";
-import { object, text, parseLandingRevision, sameLandingRevision, type LandingRevision } from "./landing.ts";
+import {
+  baseRefTargetOid,
+  flag,
+  nullableText,
+  object,
+  oneOf,
+  text,
+  parseLandingRevision,
+  sameLandingRevision,
+  type LandingRevision,
+} from "./landing.ts";
 import type { PrContext } from "./types.ts";
 
 export interface LandingRecord {
@@ -21,28 +30,29 @@ export interface ShippingService {
 
 export type ShippingResult =
   | { readonly kind: "inspected" | "cancelled"; readonly record: LandingRecord }
-  | { readonly kind: "changed"; readonly expected: LandingRecord; readonly observed: LandingRecord }
-  | { readonly kind: "not-open" | "still-pending"; readonly record: LandingRecord }
+  | {
+      readonly kind: "changed";
+      readonly expected: LandingRecord;
+      readonly observed: LandingRecord;
+    }
+  | {
+      readonly kind: "not-open" | "still-pending";
+      readonly record: LandingRecord;
+    }
   | { readonly kind: "unavailable"; readonly detail: string };
 
-function state(value: unknown): LandingRecord["state"] {
-  if (value !== "OPEN" && value !== "CLOSED" && value !== "MERGED")
-    throw new Error("missing or invalid PR state");
-  return value;
-}
-const nullableText = (value: unknown, label: string): string | null =>
-  value === null ? null : text(value, label);
+const STATES = ["OPEN", "CLOSED", "MERGED"] as const;
 
 export function parseLandingRecord(value: unknown): LandingRecord {
   const record = object(value, "landing record");
   const pending = object(record.pending, "pending merges");
-  if (typeof pending.autoMerge !== "boolean") throw new Error("missing autoMerge state");
+  const autoMerge = flag(pending.autoMerge, "autoMerge state");
   return {
     revision: parseLandingRevision(record.revision),
     pullRequestId: text(record.pullRequestId, "pullRequestId"),
-    state: state(record.state),
+    state: oneOf(record.state, STATES, "PR state"),
     pending: {
-      autoMerge: pending.autoMerge,
+      autoMerge,
       queueEntryId: nullableText(pending.queueEntryId, "queueEntryId"),
     },
     mergeCommitOid: nullableText(record.mergeCommitOid, "mergeCommitOid"),
@@ -50,10 +60,16 @@ export function parseLandingRecord(value: unknown): LandingRecord {
 }
 
 function unavailable(error: unknown): ShippingResult {
-  return { kind: "unavailable", detail: error instanceof Error ? error.message : String(error) };
+  return {
+    kind: "unavailable",
+    detail: error instanceof Error ? error.message : String(error),
+  };
 }
 
-export async function inspectLanding(service: ShippingService, context: PrContext): Promise<ShippingResult> {
+export async function inspectLanding(
+  service: ShippingService,
+  context: PrContext
+): Promise<ShippingResult> {
   try {
     return { kind: "inspected", record: await service.inspect(context) };
   } catch (error) {
@@ -61,11 +77,16 @@ export async function inspectLanding(service: ShippingService, context: PrContex
   }
 }
 
-export async function cancelPending(service: ShippingService, expected: LandingRecord): Promise<ShippingResult> {
+export async function cancelPending(
+  service: ShippingService,
+  expected: LandingRecord
+): Promise<ShippingResult> {
   const mismatch = (record: LandingRecord): ShippingResult | null => {
     if (record.state !== "OPEN") return { kind: "not-open", record };
-    if (record.pullRequestId !== expected.pullRequestId ||
-        !sameLandingRevision(record.revision, expected.revision))
+    if (
+      record.pullRequestId !== expected.pullRequestId ||
+      !sameLandingRevision(record.revision, expected.revision)
+    )
       return { kind: "changed", expected, observed: record };
     return null;
   };
@@ -98,6 +119,7 @@ const INSPECT_QUERY = `query Landing($owner:String!,$repo:String!,$pr:Int!) {
   repository(owner:$owner,name:$repo) {
     pullRequest(number:$pr) {
       id state headRefOid baseRefName baseRefOid
+      baseRef { target { oid } }
       autoMergeRequest { enabledAt }
       mergeQueueEntry { id }
       mergeCommit { oid }
@@ -112,43 +134,102 @@ function data(value: unknown): Record<string, unknown> {
 }
 
 export class GhShippingService implements ShippingService {
-  constructor(private readonly execute: typeof runJson = runJson) {}
+  constructor(
+    private readonly execute: (
+      argv: readonly [string, ...string[]]
+    ) => Promise<unknown>
+  ) {}
 
   async inspect(context: PrContext): Promise<LandingRecord> {
-    const response = data(await this.execute([
-      "gh", "api", "graphql", "-f", `query=${INSPECT_QUERY}`,
-      "-f", `owner=${context.owner}`, "-f", `repo=${context.repo}`, "-F", `pr=${context.number}`,
-    ]));
-    const fields = object(object(response.repository, "repository").pullRequest, "pullRequest");
-    const autoMerge = fields.autoMergeRequest === null ? false :
-      Boolean(text(object(fields.autoMergeRequest, "autoMergeRequest").enabledAt, "enabledAt"));
-    const queueEntryId = fields.mergeQueueEntry === null ? null :
-      text(object(fields.mergeQueueEntry, "mergeQueueEntry").id, "queue entry id");
+    const response = data(
+      await this.execute([
+        "gh",
+        "api",
+        "graphql",
+        "-f",
+        `query=${INSPECT_QUERY}`,
+        "-f",
+        `owner=${context.owner}`,
+        "-f",
+        `repo=${context.repo}`,
+        "-F",
+        `pr=${context.number}`,
+      ])
+    );
+    const fields = object(
+      object(response.repository, "repository").pullRequest,
+      "pullRequest"
+    );
+    const state = oneOf(fields.state, STATES, "PR state");
+    const currentBaseOid = baseRefTargetOid(fields.baseRef);
+    const autoMerge =
+      fields.autoMergeRequest === null
+        ? false
+        : Boolean(
+            text(
+              object(fields.autoMergeRequest, "autoMergeRequest").enabledAt,
+              "enabledAt"
+            )
+          );
+    const queueEntryId =
+      fields.mergeQueueEntry === null
+        ? null
+        : text(
+            object(fields.mergeQueueEntry, "mergeQueueEntry").id,
+            "queue entry id"
+          );
     return {
-      revision: parseLandingRevision(fields, context),
+      revision: {
+        context,
+        headRefOid: text(fields.headRefOid, "headRefOid"),
+        baseRefName: text(fields.baseRefName, "baseRefName"),
+        baseRefOid: text(
+          state === "OPEN"
+            ? currentBaseOid
+            : (currentBaseOid ?? fields.baseRefOid),
+          "baseRef.target.oid"
+        ),
+      },
       pullRequestId: text(fields.id, "pull request id"),
-      state: state(fields.state),
+      state,
       pending: { autoMerge, queueEntryId },
-      mergeCommitOid: fields.mergeCommit === null ? null :
-        text(object(fields.mergeCommit, "mergeCommit").oid, "merge commit oid"),
+      mergeCommitOid:
+        fields.mergeCommit === null
+          ? null
+          : text(
+              object(fields.mergeCommit, "mergeCommit").oid,
+              "merge commit oid"
+            ),
     };
   }
 
   async disableAutoMerge(id: string): Promise<void> {
-    const result = data(await this.execute([
-      "gh", "api", "graphql", "-f",
-      "query=mutation($id:ID!) { disablePullRequestAutoMerge(input:{pullRequestId:$id}) { clientMutationId } }",
-      "-f", `id=${id}`,
-    ]));
+    const result = data(
+      await this.execute([
+        "gh",
+        "api",
+        "graphql",
+        "-f",
+        "query=mutation($id:ID!) { disablePullRequestAutoMerge(input:{pullRequestId:$id}) { clientMutationId } }",
+        "-f",
+        `id=${id}`,
+      ])
+    );
     object(result.disablePullRequestAutoMerge, "disablePullRequestAutoMerge");
   }
 
   async dequeue(id: string): Promise<void> {
-    const result = data(await this.execute([
-      "gh", "api", "graphql", "-f",
-      "query=mutation($id:ID!) { dequeuePullRequest(input:{pullRequestId:$id}) { clientMutationId } }",
-      "-f", `id=${id}`,
-    ]));
+    const result = data(
+      await this.execute([
+        "gh",
+        "api",
+        "graphql",
+        "-f",
+        "query=mutation($id:ID!) { dequeuePullRequest(input:{id:$id}) { clientMutationId } }",
+        "-f",
+        `id=${id}`,
+      ])
+    );
     object(result.dequeuePullRequest, "dequeuePullRequest");
   }
 }

@@ -1,0 +1,16 @@
+{
+  "name": "pstack",
+  "displayName": "pstack (GitHub Copilot port)",
+  "version": "0.15.0",
+  "description": "If you want to go fast, go deep first. pstack helps you write less, but higher quality code. rigorous agent workflows you can parallelize with confidence. Ported from cursor/plugins/pstack to GitHub Copilot CLI and app. Original pstack by Lauren Tan (poteto).",
+  "author": {
+    "name": "dev-dingguri",
+    "email": "dev.dingguri@gmail.com",
+    "url": "https://github.com/dev-dingguri"
+  },
+  "homepage": "https://github.com/dev-dingguri/pstack-orca",
+  "repository": "https://github.com/dev-dingguri/pstack-orca",
+  "license": "MIT",
+  "keywords": ["pstack", "poteto-mode", "workflow", "principles", "agent-style", "subagents", "unslop", "claude-code", "skills", "tdd", "code-review", "parallel-agents", "codex", "opencode", "gemini-cli", "prime-agent", "orca", "multi-provider", "github-copilot"],
+  "hooks": "hooks/copilot-hooks.json"
+}

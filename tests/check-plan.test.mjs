@@ -1,8 +1,12 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, setDefaultTimeout, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
+// check-plan.mjs runs under node; a starved CI runner took over bun's 5 s
+// default and the test read the killed child as code null (run 36492567721).
+setDefaultTimeout(30_000);
 
 const mode = join(import.meta.dir, "../plugins/pstack/skills/poteto-mode");
 const playbook = readFileSync(join(mode, "playbooks/multi-phase-plan.md"), "utf8");
@@ -40,6 +44,15 @@ describe("plan checklists", () => {
 
   test("completed boxes remain valid", () => {
     expect(run(skeleton.replaceAll("- [ ]", "- [x]")).code).toBe(0);
+  });
+
+  test("a plan saved with a UTF-8 byte-order mark passes", () => {
+    for (const plan of ["\uFEFF" + skeleton, "\uFEFF---\ntitle: Plan\n---\n" + skeleton]) {
+      expect(run(plan)).toEqual({
+        code: 0,
+        out: expect.stringContaining("1 PR sections, 0 problems"),
+      });
+    }
   });
 
   for (const heading of [
@@ -86,6 +99,7 @@ describe("fenced plan evidence", () => {
     ["shorter inner tildes", "~~~~markdown", "~~~yaml\nmessage: “code”\n~~~", "~~~~"],
     ["different inner delimiter", "```markdown", "~~~yaml\nmessage: “code”\n~~~", "```"],
     ["indented delimiter", "   ~~~yaml", "message: “code”", "   ~~~"],
+    ["list item delimiter", "    ```yaml", "    PORT: 3000\n    message: “code”", "    ```"],
     ["longer closing delimiter", "~~~yaml", "message: “code”", "~~~~"],
     ["delimiter with trailing text", "```text", "```still code\nmessage: “code”", "```"],
   ]) {

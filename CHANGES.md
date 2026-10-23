@@ -1,6 +1,19 @@
-# CHANGES — applied substitutions
+# CHANGES
 
-This port applies the Cursor → Claude Code substitutions in skill bodies. Earlier drafts left them flagged; this revision resolves them. A later pass added a Codex build that shares the same skills; see [Codex port](#codex-port) below.
+This file is the release changelog, with one `## <version> - <title>` entry per release, newest first. The Cursor-to-Claude rewrite rules live in [`tools/substitutions.json`](tools/substitutions.json), and the [sync boundary](CONTRIBUTING.md#the-sync-boundary) in `CONTRIBUTING.md` defines how a change to upstream's skill content is declared.
+
+## 0.15.0 - merge pstack-claude 0.9.102 and rebuild the provider layer on its tiers
+
+This release merges pstack-claude from 0.9.37 to 0.9.102 (`356c6e0`). The merge brings in upstream's Cursor sync to `7b353f7` (v0.15.27), the thermos and formal verification skills, the Pi, GitHub Copilot, and Muse builds, `tools/forks.json`, and the generator split into `tools/runtimes.mjs`. pstack-claude moved `models.json` from full model IDs to tiers (`default`, `strongest`, `worker`, `panel`) of Claude family names, with a block per runtime. It also passes reasoning effort as the dispatch's `effort` field. The fork's provider layer is rebuilt on that shape instead of keeping the old one.
+
+- `models.json` keeps upstream's tiers and runtime blocks and adds the fork's fields: `providers` (the `claude` provider reads the top-level tiers; `codex` reads the `codex` block and lists its available models), a `mode` on every role, and `taskEffort` (`high` for ordinary work, `xhigh` for difficult work). Roles name tiers, so a host resolves its own single-role and strongest-role defaults from its provider's block. A `panel` role takes one entry per provider from that provider's `panel` tier, which keeps the default panel at `opus@claude`, `gpt-6.1-sol@codex`.
+- Model policy follows the fork, not pstack-claude. Feature and refactoring stay on the default tier instead of upstream's Sonnet worker tier, and bug-fix, perf-issue, and hillclimb stay on the strongest tier. The Codex block uses GPT-6.1 Sol as the default and panel entry. Upstream's four-model Claude panel is not adopted.
+- Entries are `model@provider`, where a Claude model is a family name (`opus@claude`) because the `Agent` tool rejects full IDs. An entry may add an effort after a space (`opus@claude @xhigh`), which is upstream's syntax, so the two `@` uses stay apart. `setup-pstack` rewrites an older sheet's `claude-*` IDs to family names and keeps the `@claude` tag.
+- The 0.14.0 effort agents are removed. `run-role` passes the resolved effort as `effort` on the `Agent` call and keeps the prescribed `subagent_type`. It resolves effort from an explicit request, the entry's level, the sheet's `default effort` line, and then the task tier, in that order. The written sheet carries no `default effort` line, so the tier defaults apply until the user adds one.
+- `tools/fork.mjs` holds the fork's renderers (Models sections, the run-role Roles table, the interrogate reviewer table, the Reasoning effort sections, setup-pstack's Models section and sheet block, and the Codex model names) and the `checkFork` validation. `generate.mjs` and `runtimes.mjs` import them, so the fork's edits to upstream generator code stay small.
+- Skills whose dispatch sentences upstream rewrote (`architect`, `arena`, `how`, `why`, `reflect`, `swarm`, `interrogate`, `show-me-your-work`, `poteto-mode`, `feature.md`, `setup-pstack`) route through `run-role` again. Upstream's "pick each subagent's reasoning level" sentences are dropped where run-role now sets the effort.
+- The generator's stray-model scan also rejects a Codex model ID outside a generated region, and it compares repository paths with forward slashes so the scan works on Windows.
+- `tests/fork.test.mjs` checks the fork's layer: the provider panel, pool roles, modes, task efforts, the Codex model names, and the rejection of malformed fork fields.
 
 ## 0.14.0 - set effort on native Claude Code dispatches
 
@@ -80,6 +93,556 @@ This fork of [pstack-claude](https://github.com/michael-denyer/pstack-claude) re
 - `orca-delegate` is bundled as a skill with its file-delivery reference and contract helper. Its description names `run-role` as a caller.
 - `arena`, `swarm`, `architect`, `interrogate`, `how`, `why`, `reflect`, and `poteto-mode` dispatch their roles through `run-role` instead of calling `Agent` directly; the prompts, output paths, and review steps are unchanged. `setup-pstack` writes `slug@provider` entries and records whether Orca is installed without probing.
 - Repository metadata, README, reference, notices, and glossary describe the fork. The upstream pin for the Cursor tree remains at `e8d856f`; the fork merges pstack-claude through git.
+
+## 0.9.102 - The skill link validator keeps angle-bracket destinations
+
+`tools/validate-skills.mjs` now reads a Markdown link destination written in angle brackets, such as `[text](<path with spaces.md>)`, as the path inside the brackets. It used to check the brackets as part of the path, so a link to an existing file was reported as broken. No skill content changed. `tests/agent-skills.test.mjs` covers the case.
+
+## 0.9.101 - The transcripts directory script finds the session by its id
+
+`claude-project-dir.mjs` now finds this session's transcripts directory from `CLAUDE_CODE_SESSION_ID`, which Claude Code sets in its shell. It returns the directory under `projects/` that holds `<id>.jsonl` or `<id>/<id>.jsonl`, and reads only names. A bare `<id>/` does not count, because Claude Code's Workflow tool creates one under the shell's current project. In 0.9.100 the skills passed the system prompt's primary working directory, and that label follows the shell rather than the directory the session started in. After the agent moved into a worktree, `recall`, `automate-me`, `reflect`, `show-me-your-work`, and the Eval and Session pickup playbooks got exit 1. After a move into another project with transcripts of its own, they read that project's chats. The skills now run the script without an argument. A test fails if any of them passes the primary working directory again. Session pickup passes an earlier session's start directory when that session started somewhere else.
+
+With an argument, the script derives the name from that directory and skips the session lookup. Without a session id, as in a Claude Code release that does not set one, it derives the name from the current directory, as before. It no longer trims `CLAUDE_CONFIG_DIR`, because Claude Code uses the value as given.
+
+**Verified.** The new test, a session whose transcript sits under a directory other than the one the workspace path derives, fails on 0.9.100 and passes here. This session ran from another directory: the script printed this session's directory, and the `reflect` line found its transcript.
+
+## 0.9.100 - A script prints the transcripts directory, and plugins honour CLAUDE_CODE_PLUGIN_CACHE_DIR
+
+`skills/reflect/scripts/claude-project-dir.mjs` prints Claude Code's transcripts directory for the directory a session started in, passed as its argument, or for the current directory. `recall`, `automate-me`, `reflect`, `show-me-your-work`, and the Eval and Session pickup playbooks run it with the primary working directory the system prompt names, rather than having the agent build `<encoded-cwd>` from a description. Claude Code names the directory after the start directory, and the agent's shell may have moved since. The description in 0.9.99 left out two cases. Claude Code keeps only ASCII letters and digits, so `é` also becomes `-`. A name longer than 200 characters keeps its first 200 and gains `-` and a base-36 hash of the path. The script reproduces both. It uses `CLAUDE_CODE_PROJECT_DIR_NAME` as the name when it is set together with `CLAUDE_CONFIG_DIR` and Claude Code would accept it: 1 to 64 letters, digits, `_`, or `-`, and not a Windows reserved device name such as `nul`. When the derived directory is missing, it takes the one directory that shares the first 200 characters, so a hash that changes in a later Claude Code release still resolves. `reflect` passes its output to `find-transcript.mjs`.
+
+`poteto-agent` and the `reflect` reviewer prompts name the plugins directory as `${CLAUDE_CODE_PLUGIN_CACHE_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins}/`. Claude Code's environment variable reference says `CLAUDE_CODE_PLUGIN_CACHE_DIR` sets the plugins root. The `~/.cursor/plugins/` rule in `tools/substitutions.json` writes the new form, and the sync dry-run at the pinned SHA still prints 47 forked and 87 unchanged. The GitHub Copilot reference's summary line now names the configuration directory paths as well. `tests/claude-config-dir.test.mjs` also fails on a plugins path without the override and on any bare `~/.claude/` path other than pstack's `orchestrate` store and the `setup-pstack` include example. Both gaps came from the review of #300.
+
+**Verified.** `tests/claude-project-dir.test.mjs` checks the script against a directory Claude Code 2.1.296 created for a session started in a 232-character path holding `é` and `_`. The derived 207-character name, hash included, matches the directory byte for byte. The test also covers the `CLAUDE_CODE_PROJECT_DIR_NAME` rules, a blank or padded `CLAUDE_CONFIG_DIR`, the prefix fallback, a removed start directory, and the exit status. Run from another directory, the new `reflect` line finds the session's transcript when given the start directory. Without it the script exits 1.
+
+## 0.9.99 - Skills and plugins paths follow CLAUDE_CONFIG_DIR, and the transcript directory encoding is correct
+
+The skills that named Claude Code's user skills and plugins directories as `~/.claude/skills/` and `~/.claude/plugins/` now name `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/` and `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/`. Claude Code keeps both under its configuration directory. Without this change, on a machine with `CLAUDE_CONFIG_DIR` set, `poteto-agent` searched an empty `~/.claude/plugins/` for the poteto-mode skill, `automate-me` missed personal mode skills, and the `reflect` reviewers ignored the skill reads they were meant to count. The `~/.cursor/plugins/` rule in `tools/substitutions.json` writes the new form, and a new `~/.cursor/skills/` rule runs ahead of the project `.cursor/skills/` rule, so a sync derives the same text and the change adds no fork.
+
+`recall`, `automate-me`, and the Session pickup playbook described `<encoded-cwd>` as the workspace path with `/` changed to `-`, and `recall` said the leading slash was dropped. Claude Code changes every character other than a letter or digit to `-`, the leading slash included, so `/private/tmp/coat_opus48_440` is stored as `-private-tmp-coat-opus48-440`. The three now say so.
+
+`tests/claude-config-dir.test.mjs` now also fails on a `skills` or `plugins` path under `~/.claude` without the variable, and on the old encoding wording. The `~/.claude/orchestrate/` store stays where it is: pstack creates it, not Claude Code. Both gaps were listed in the Scope section of [#298](https://github.com/michael-denyer/pstack-claude/pull/298).
+
+**Verified.** Both tests fail on 14 lines at 0.9.98 and pass here. The sync dry-run at the pinned SHA prints the same ownership map as 0.9.98: 47 forked, 87 unchanged. The encoding comes from the `projects/` directory names on a machine running Claude Code 2.1.296. Claude Code's environment variable reference says plugins live under `CLAUDE_CONFIG_DIR`. For user skills, the 2.1.296 binary joins `skills` onto the same configuration directory. A separate run with the variable set did not happen, because a new configuration directory starts logged out.
+
+## 0.9.98 - Transcript paths follow CLAUDE_CONFIG_DIR
+
+Claude Code writes transcripts under `$CLAUDE_CONFIG_DIR/projects/` when that variable is set, and writes nothing to `~/.claude/projects/`. The skills named the fixed path, so on such a machine `recall` and `automate-me` read a directory that is missing or belongs to another configuration. `reflect` passed that directory to `find-transcript.mjs`, which exited 1 with `ENOENT`, so the skill fell back to a digest every time. The Eval and Session pickup playbooks and `show-me-your-work` had the same gap. `worktree-audit.mjs` has read the variable since 0.9.68.
+
+Every skill and mapping that named `~/.claude/projects/` now names `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects/`, the directory `worktree-audit.mjs` scans. The default reads `$HOME`, as in the SessionStart hook, because bash leaves `~` unexpanded inside double quotes. The Worktree and simulator cleanup playbook also names Claude Code's shell snapshots as `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/shell-snapshots/`. The five rules in `tools/substitutions.json` that write these paths carry the new form, so a sync derives the same text and the change adds no fork. `tests/claude-config-dir.test.mjs` fails when a file outside `CHANGES.md` and `tests/` spells these paths any other way, such as `~/.claude/projects`, a `~` default, or `$CLAUDE_CONFIG_DIR` without a default.
+
+@Poggen found and fixed this in [#298](https://github.com/michael-denyer/pstack-claude/pull/298).
+
+**Verified.** The new test fails on 24 lines in 12 files at 0.9.97 and passes here. With `CLAUDE_CONFIG_DIR` set, the 0.9.97 `reflect` command line exits 1 with `ENOENT`, and the new one prints the session's transcript. With the variable unset, the new line resolves to `~/.claude/projects/`.
+
+## 0.9.97 - Hooks load from a plugin root with a backslash
+
+The Copilot and Muse SessionStart hooks pass their hooks directory to awk through `PSTACK_HOOKS` in the environment instead of `-v`. awk expands backslash escapes in a `-v` value, so a plugin root holding `\t` or `\\`, as a Windows-style path does, pointed awk at a directory that does not exist. The hooks then exited 0 with the mandate missing: Copilot sent `{"additionalContext":"\n\n\n\n"}`, and Muse sent only the sheet's role lines. Closes [#296](https://github.com/michael-denyer/pstack-claude/issues/296).
+
+## 0.9.96 - Muse port
+
+pstack now ships a Muse build. The native plugin manifest under `.muse-plugin/` lists every shared skill and a `SessionStart` hook that injects the poteto-mode mandate in Muse wording once the user approves the plugin's hooks. Muse surfaces each user-invocable skill as a slash command itself, so the build ships no command templates. The plugin's four agent files register as Muse agent definitions, and role effort suffixes pass as a Workflow child's `effort`, the Muse form of the dispatch effort field 0.9.95 standardized on. A new `muse-tools.md` mapping resolves Claude tool names, subagents, transcripts, and Muse model IDs, and `models.json` gains a `muse` block with a model per tier. `setup-pstack` writes the Muse sheet under the Muse config directory, which the hook reads directly. The generator owns the manifest's skill list and the Muse preambles, so the build stays in step with the tree. The Muse hook keeps each usable sheet line through the same `sheet_problems()` check the Copilot hooks use. @LuckyProtein built the port in [#295](https://github.com/michael-denyer/pstack-claude/pull/295).
+
+## 0.9.95 - Effort is a field on the dispatch
+
+An `@level` on a role now reaches the child as the dispatch's own effort field on every runtime: `effort` on the Claude Code `Agent` call, `reasoning_effort` on Codex's `spawn_agent` and Copilot's `task`, and `effort` on Pi's `agent` tool. The ten generated agents, `effort-<level>` and `poteto-agent-<level>`, are gone, and so is the `agents` list in the Claude Code plugin manifest. They existed only because the `Agent` call had no effort parameter, and Claude Code 2.1.292 added one. Without the list Claude Code registers the default `agents/` directory, so pstack's agent types are exactly the four under `agents/`: `comment-sicko`, `poteto-agent`, and the two thermo-nuclear subagents. The generator now fails if the manifest gains an `agents` list again. Claude Code 2.1.292 or later is required for `@level`.
+
+On Pi, the `agent` tool takes an optional `effort` that the extension passes to the child as `--thinking`. A value outside the levels in `models.json` errors and names the valid ones, and no child starts. An agent file's `effort` frontmatter is no longer read, since no file under `agents/` set it. Omitting `effort` still runs the child at the parent's thinking level. @yehheng3-hub proposed the change in [#293](https://github.com/michael-denyer/pstack-claude/issues/293).
+
+**Verified.** On Claude Code 2.1.296, a `claude -p --plugin-dir` session on this branch at `xhigh` listed only the four `agents/` types, and per-turn effort in the subagent transcripts read `low` for `general-purpose` and `pstack:poteto-agent` spawned with `effort: "low"`, and `xhigh` for a spawn without one. With `swarm workers: sonnet @low` in a project override sheet, `/pstack:swarm` in a `medium` session dispatched both workers as `general-purpose` with `effort: "low"`, and their turns ran at `low`. On Pi 1.3.0, `PSTACK_PI_LIVE=1 bun test tests/pi/live.test.mjs` passed 11 of 11, including a `pstack:poteto-agent` child spawned with `effort: "high"` whose session records thinking `high`. The upstream Claude Code adapter at the pinned `7b353f7` maps a role's level to the same `effort` field.
+
+## 0.9.94 - formal verification skills
+
+Sync to upstream `7b353f7` (v0.15.27 and later). Two skills are new. `/create-formal-verification-skill` picks the property in the repo where a bug costs the most and tests reach the least, verifies it with the tool that fits (TLA+ by default for ordering bugs, a code-level verifier or a proof otherwise), shows each property failing on a broken variant, and leaves a project-local skill that the next agent reruns. That skill records the files it covers and the commit it was last confirmed against. `/maintain-formal-verification-skill` finds the commits that touched the covered code since then, updates the model, harness, or properties, reruns, and says whether each failure is drift in the verification or a bug in the code. Both are model-invocable, as every public skill in the port is.
+
+The port's `/create-verification-skill` writes a project skill named `verify`, so a new substitution rule tells `/create-formal-verification-skill` to name its skill for the area it verifies, never `verify` or a `verify-` prefix, and to write it to `.claude/skills/<area>/` on Claude Code. Another tells `/maintain-formal-verification-skill` that the project `verify` skill is not a formal check, and a third renames upstream's "verify skill" to "formal verification skill" in both, so the term never reads as the driver. `/setup-pstack` gains a step 10 that offers the formal skill once, after the verification-skill offer, and `/poteto-help` mentions both skills when a question is about a race, an invariant, or drifted formal checks. The Codex, Pi, and Copilot mappings say where those runtimes keep the generated skill. The README now says how the built-in skill relates to the separate [agent-formal-verify](https://github.com/michael-denyer/agent-formal-verify) plugin.
+
+The sync also carries upstream's wording updates to `/ketchup`, `/sharpen`, `/typescript-best-practices`, and the `/poteto-help` recipes.
+
+## 0.9.93 - orch reads gh head repositories on gh before 2.80
+
+`orch frontier set` no longer rejects every gh pull request row as invalid on gh before 2.80.0, whose `headRepository` carries only `id` and `name`. The gh query now asks for `headRepositoryOwner` too and builds the head repository from the owner's login and the repository name, as `watch-pr` already does, so it reads the same on every gh version. A malformed owner still fails the row, and a deleted fork still drops out of the chain. @newinh found and fixed it in [#288](https://github.com/michael-denyer/pstack-claude/pull/288).
+
+## 0.9.92 - Pi keeps hidden worktree output and quotes transcript paths
+
+On Pi, an agent's worktree is no longer removed as clean when `status.showUntrackedFiles=no` hides its new or ignored files from `git status`. The cleanup check sets `--untracked-files=normal` itself, as the worktree audit already did, and leaves the user's setting alone. The `/pstack-agents` read command now quotes a transcript path that contains spaces, quotes, `$`, or other shell syntax, so `tail -f` and `pi --export` get it as one argument. The `transcript:` line still shows the raw path. @EthanYoQ found and fixed both, in [#284](https://github.com/michael-denyer/pstack-claude/pull/284) and [#285](https://github.com/michael-denyer/pstack-claude/pull/285).
+
+## 0.9.91 - Calibrate comparison tools
+
+Build the Lever requires known-bad controls for each comparison output and refuses a match when required input is missing.
+
+## 0.9.90 - Pi shows what a running agent is doing
+
+On Pi, a running agent's `list_agents` entry gains an `activity` field: its current tool call, or the last one once it ended, as the tool name and a one-line summary of its arguments, and the first line of its latest message. A footer line, `pstack: 2 running · a1b2c3d4 bash: ls -la`, names the count and the most recently active agent while any runs, including one `send_message` resumes after a reload, and clears when none does. The new `/pstack-agents` command shows each agent's status, activity, transcript path, and the command to read it: `tail -f` while it runs, `pi --export` once it ended. Activity is read from the child's RPC stream and held in memory. The extension never appends it to the session or sends it as a message, so the model sees it only in a `list_agents` result, and the child's session has no second writer. Only the top-level session sets the footer. @Nickonomic asked for a way to see a background agent's work while it runs (#279); this completes the live view that 0.9.89's transcript path began.
+
+## 0.9.89 - Pi agents name their transcript
+
+On Pi, `list_agents` gains a `sessionFile` field for each agent: the child's session file, `<timestamp>_<session id>.jsonl` in the agent's session directory. The completion notice and a foreground agent's result carry the same path on a `transcript:` line. A user can follow a running background agent with `tail -f <sessionFile>` and render a finished one with `pi --export <sessionFile>`; before this, they had to find the file by hand. Pi writes the file once the child's first message is in and reopens it on a resume, so an agent keeps one path for its whole life, and one with no file yet lists none. @Nickonomic asked for a way to see a background agent's work while it runs (#279); this covers finding the transcript, and a live activity view follows.
+
+## 0.9.88 - feature and refactoring delegates run on a Sonnet worker tier
+
+Upstream gives each role one of two defaults at `99743e9`: `claude-opus-5-5-xhigh` for judgment and synthesis, and the fast `grok-4.7-xhigh-fast` for code delegates, explorers, investigators, the reflect tooling reviewer, and swarm workers. `plugins/pstack/models.json` gains a `worker` tier, `sonnet`, for the routine code roles, and `feature, refactoring` moves to it from `opus`. `bug-fix`, `perf-issue`, and `hillclimb` move from `fable` to `opus`, reversing the 0.9.15 choice, since upstream runs them on its worker model rather than its strongest. `how explorer`, `why investigators`, `reflect tooling`, and `swarm workers` stay on `opus`, where upstream runs them on its worker model. `poteto-mode` still sends the hardest changes to the `strongest judgment` role, which stays on `fable` where upstream names Opus. The four-model panel stays: upstream's two-model panel crosses vendors, and a Claude-only panel gets its diversity from more Claude models. A `pstack-models.md` line still overrides any role.
+
+The Codex block gains a `worker` example, `gpt-6-sol`, the model the Pi table already maps `sonnet` to, and the Codex mapping names the worker roles on their own line. The Copilot setup asks a worker-model question after the default model, and the Copilot mapping names the worker roles. `poteto-mode` sends trivial mechanical edits to the worker model.
+
+`principle-prove-it-works` adds one check: before you report success, read the real state and the exit code, because truncated output and your own echo prove nothing. @fisherivco reported it from a `reflect` run (#276). The same issue's proposal to let the model start `reflect` on its own is not taken: upstream marks `reflect` as user-invoked only, and its step 5 files Backlog items to the tracker without waiting.
+
+## 0.9.87 - worktree audit holds ignored user files and reflog-only commits
+
+The worktree audit called two kinds of worktree `safe` that `git worktree remove` destroys work in. The first held an ignored file that exists nowhere else, such as `.env` or `.claude/settings.local.json`, because the status call skipped ignored files. The second had a commit no branch, tag, or remote reaches, such as one made on a detached HEAD before switching back to the trunk, because the audit checked only the current HEAD. Removing the worktree deletes its HEAD reflog, which leaves that commit for `git gc` to prune.
+
+The audit now asks `git status` for ignored paths with `--ignored=matching` and counts those outside a named list of build and cache directories (`DISPOSABLE` in `worktree-audit.mjs`: `node_modules`, `.venv`, `__pycache__`, `dist`, `build`, `target`, and others). It prints the count as `ignored:N` and holds the worktree as `hold-ignored`. It also walks the worktree's HEAD reflog and counts commits that no branch, tag, remote, or branch reflog reaches, then prints `reflog:N` and holds it as `hold-reflog`. A branch reflog lives in the shared logs and outlives the worktree, so a rebased branch's old tip does not count. The worktree-cleanup playbook names both labels and the commands that list what they count.
+
+## 0.9.86 - sync to upstream 99743e9 (v0.15.25): adds /in-your-own-words and /sharpen
+
+The upstream pin moves from `997ffc7` to `99743e9`, upstream v0.15.25, 15 pstack commits. `/in-your-own-words` plays back the user's goal and the problem before work starts, and `/sharpen` aims a task the way a top expert would without overspecifying it. `/poteto-help` routes to both. `/ketchup` answers in about 150 words built on real visuals, and the autopilot ticks and replies catch the operator up through it. `principle-fix-root-causes` proposes a cheap always-on signal after a deep dig. `principle-attack-the-premise` and three other principles state their rules as reasoning, and four skills drop marginal sections. The package now carries 39 public skills and 24 principles.
+
+`poteto-mode` gains upstream's rule to match each subagent's effort to the job, and the skills that spawn subagents point at it. On Claude Code the rule moves the effort level through the [Reasoning effort](plugins/pstack/skills/poteto-mode/SKILL.md#reasoning-effort) section's `@level` values and effort agents. Fast mode is a session setting on Claude Code, so a spawn never changes its speed. Model fallbacks in `arena` and `interrogate` go by model name as before. When a delegate agent has to find the skill itself, it picks the newest install by `.claude-plugin/plugin.json`; a substitution rule and a denylist token keep upstream's `.cursor-plugin/plugin.json` out of the port.
+
+Upstream rewrote the Autopilot-full, Autopilot-stack, and Shipping playbooks as rules with their reasons. The port takes the new text and keeps its own policy inside it. In Autopilot-full, owners stop at merge-ready, the operator clicks every merge, the program's size waits for the operator's go above three owners, and a PR stops at two fix-forwards. Upstream now runs the full swarm once and lets trunk defects pass without gating the PR, which the port's fork used to add, so those lines are upstream's. Autopilot-stack keeps the verdict record, pending-merge cancellation, and leased pushes. Shipping keeps landing under a service-enforced head condition, arming auto-merge only behind enforcing repository rules, `ship-pr` cancellation before any chain change, the confirmed landing, and the watcher's blocker routing, now inside upstream's six steps. `principle-attack-the-premise` takes upstream's text, which now covers the port's falsifying-check line, and its fork is gone. `principle-test-behavior-not-implementation` keeps one port line, on constant pins.
+
+Orchestrate no longer uses Graphite. `orch frontier set` walks the PR base chain from the checkout's current branch through `gh`, or through Origin's CLI with `--forge origin`, so `gt` drops out of the dependency table in `docs/reference.md`, the Pi equivalence table, and the Codex, Pi, and Copilot mappings. The port keeps its guards on the new code: frontier SHAs come from exact `refs/heads/<branch>` refs, the current branch is read from the full `HEAD` ref so a same-named tag cannot shadow it, the `gh` chain keeps only pull requests whose head repository is the one the current branch pushes to, so a stack opened from your fork resolves while another fork's same-named branch stays out and is named in the error when it is the only match, each `gh pr list` call lists up to 1000 pull requests instead of gh's 30, forge calls run without an environment override under a 60-second SIGKILL timeout, and tests inject a fake forge through the store's `forgePaths` option. The guards for Graphite's output went with the code they guarded. `watch-pr` reads a Code Review Gate check that concludes `ACTION_REQUIRED` as the owner-approval gate, as upstream now does.
+
+`/ketchup` asks for charts rendered from the data where upstream names Cursor's `/visualize` command, and the sync denylist now rejects `/visualize`.
+
+New substitution rules translate upstream's effort sentence, the reworded cloud-agent and driver-skill sentences, the "re-reads from trunk" tick, and the orchestrate worker placement, so the next sync derives those lines without a conflict.
+
+Measured in two runs of `bun tools/sync.mjs pstack`. The step to `c86f349` merged clean: 4 updated, 1 added, 1 merged. The step to `99743e9`, over 106 files with 37 excluded, left 60 unchanged, updated 24, added 1, merged 6, and wrote 15 conflicts, each resolved by hand from upstream's new text plus the lines its `forks.json` entry names.
+
+## 0.9.85 - drop the signed C2PA manifest from the images
+
+The plugin icon (`.claude-plugin/icon.png` and `assets/pstack-icon.png`) and the README overview (`assets/pstack-overview.png`) each carried a PNG `caBX` chunk holding a signed C2PA manifest from the image generator: an X.509 certificate chain, a COSE signature, and an RFC 3161 timestamp. A plugin directory screen that reads the printable text of image files can take that text for a credential. The chunk is gone from all three files and the pixels are unchanged: `magick compare -metric AE` reports 0 differing pixels, and each file keeps only its `IHDR`, `IDAT`, and `IEND` chunks. A test walks the chunks of every tracked PNG and fails on a `caBX` chunk.
+
+## 0.9.84 - run the Codex SessionStart hook again
+
+0.9.83 shipped a root `plugins/pstack/plugin.json` in the Agent Plugins 1.0.0 format. Codex reads that manifest before `.codex-plugin/plugin.json` and loads no plugin hooks for an Agent Plugins manifest, so on Codex the `SessionStart` hook stopped running and sessions lost the pstack routing instruction. Skills still loaded, and Claude Code was not affected. The root manifest is gone, so Codex reads `.codex-plugin/plugin.json` and its hooks again. The generator now fails when `plugins/pstack/plugin.json` exists, and the sync still excludes upstream's copy. A packaging test follows Codex's manifest lookup over the shipped plugin and checks that it finds the `SessionStart` hook, and that the 0.9.83 manifest would hide it. @Dude-Bear found the cause and confirmed it by moving the file aside, in [#265](https://github.com/michael-denyer/pstack-claude/issues/265).
+
+The worktree-audit tests that make a directory unreadable now skip where `chmod` cannot deny a read, as under root, instead of failing six cases in containers and other root shells. They still run on CI's non-root runners.
+
+## 0.9.83 - sync to upstream 997ffc7 (v0.15.21): adds /ketchup
+
+The upstream pin moves from `df58112` to `997ffc7`, upstream v0.15.21, 15 commits. The `/ketchup` skill catches the user up on everything in the chat since their last message, with a before-and-after visual for each action item, and `/poteto-help` routes to it. Upstream distilled the prompts of most skills to cut tokens, and the port takes every distilled text. `poteto-mode` tells the chat that receives `/poteto-mode` to run the playbook itself and spawn `poteto-agent` only as a delegate, which the agent's description and the generated effort agents repeat, and it names where the bundled leaf skills live relative to its own file. `create-verification-skill` reads "ready" as usable from an empty data dir, and `unslop`'s description drops "Must always apply." @Tradie-AI-2000 asked for this sync in [#260](https://github.com/michael-denyer/pstack-claude/issues/260).
+
+`watch-pr` reads review threads one page at a time, as upstream now does: the reader returns a page and `resolveReviewThreads` walks the cursor, so the Bugbot pass count still comes from every thread. The port's check that a cursor advances now lives in one helper that both page loops call, and a thread page that promises more pages without a cursor is refused, as the reader refused it before the sync. `check-plan.mjs` takes upstream's fence tracking by delimiter character and length, and keeps opening a fence at any indentation so a fence inside a list item still counts. Upstream's new `check-plan.test.ts` runs in CI with the orch and watch-pr tests; its valid-plan fixture carries the boxes and marker lines the port's checker requires.
+
+Upstream added a root `plugin.json` for clients that read the Agent Plugins 1.0.0 manifest. The port ships its own at the same path with the port's author, homepage, and repository, and the generator stamps its version with the other manifests, so the sync excludes upstream's copy. Upstream's fix to `worktree-audit.sh`, which checked merges against `origin/main`, has no port counterpart: the port excludes that script, and its `worktree-audit.mjs` reads the MERGED column from the PR's state. The sync rule that points the worktree-cleanup playbook at that script now matches upstream's new sentence, which documents the `-b` flag the port's script does not need. Two more rules arrive: `subagent_type: "comment-sicko"`, the id upstream adopted so Grok can spawn the agent, becomes the namespaced `pstack:comment-sicko` that Claude Code dispatches, and `reflect`'s reworded transcript sentence names Claude Code's projects directory. The Principles index in `poteto-mode` names each leaf by its title now, so the test that checks the index against the leaves derives the leaf name as the index tells the agent to. A new test checks that every agent under `agents/` is named in the Pi agent tool's description and in the Pi, Copilot, and Codex subagent policies, which are kept by hand. The scripts package's Prettier check skips `fakes.test-helper.ts`, which upstream no longer formats with Prettier, so the port's copy keeps upstream's wrapping.
+
+The package also carries upstream's [thermos](https://github.com/cursor/plugins/tree/118e73b0e196e4d49d5aade7ce6dd8985a621f68/thermos) plugin, synced as its own component at `118e73b` (thermos 1.0.0). `/thermo-nuclear-review` audits a branch's changes for bugs, breakage, security issues, devex regressions, and feature-gate leaks. `/thermos` runs that audit and the code-quality review as two background subagents, `pstack:thermo-nuclear-review-subagent` and `pstack:thermo-nuclear-code-quality-review-subagent`, over the same diff and file contents, then synthesizes their findings. `thermo-nuclear-code-quality-review` now comes from thermos instead of cursor-team-kit, which carries an identical copy, and keeps the port's Report Format section. The agents' parent-orchestration notes name `git diff` and the `Explore` agent in place of Cursor's shell and explore subagent types, the review audit reads PR comments from any review bot where upstream names Bugbot, and the Codex, Pi, and Copilot mappings say how each runtime dispatches the two reviewers. The package now carries 37 public skills and 24 principles.
+
+Measured with `bun tools/sync.mjs pstack 997ffc7` over 105 synced files with 36 excluded: 35 updated, 3 added, 6 merged, and 14 conflicts resolved by hand. Each conflict takes upstream's new text and re-adds only the lines its `forks.json` entry names. The `reflect` finder, the `why` human-rulings steps, the `verify` skill name, the driver line, the Platform Adaptation section, the `principle-test-behavior-not-implementation` keep-list exceptions, and the Autopilot-full merge-ready wording all survive. `opening-a-pr` drops a `per babysit.md` cross-reference no fork declared. No file became port-only.
+
+## 0.9.82 - restore upstream's checks in two principle skills and run haiku 5.5 on Pi
+
+`principle-attack-the-premise` and `principle-test-behavior-not-implementation` follow upstream's text again. The attack-the-premise Stop rule holds the next fix until the shared premise is written down and a per-actor census exists. When the premise is not about actors, the census is a rerunnable check whose result would differ if the premise were false. Test behavior asks whether a test would still pass if every imported function returned `undefined`, and names five shapes that would. Its keep-list adds an absence-only test that fails when the forbidden effect is injected, and a constant pin on a value promised to users. The `poteto-mode` summaries of both principles follow upstream as well. @johnkattenhorn found the drift in [#253](https://github.com/michael-denyer/pstack-claude/issues/253); the fix is in [#254](https://github.com/michael-denyer/pstack-claude/pull/254).
+
+On Pi, the `anthropic` provider's `haiku` role runs `claude-haiku-5-5`, the same generation as the opus, fable, and sonnet roles. The model first appears in Pi 1.1's catalog, so a `haiku` role on that provider needs Pi 1.1 or later. @tlmader made this change in [#252](https://github.com/michael-denyer/pstack-claude/pull/252), closing [#251](https://github.com/michael-denyer/pstack-claude/issues/251).
+
+CI typechecks the Pi extension against Pi 1.1.0, and `CONTRIBUTING.md` asks for the local Pi checks on Pi 1.1. The Pi catalog test reads the `pi-ai` package that Pi loads. When a nested and a flat copy are both installed, that is the nested copy ([#255](https://github.com/michael-denyer/pstack-claude/pull/255), [#256](https://github.com/michael-denyer/pstack-claude/pull/256)). New pull requests open with a template that asks for the test run and the release checklist.
+
+## 0.9.81 - inspect terminal PRs and recover orphaned Pi agents
+
+`ship-pr inspect` reads closed and merged PRs after their base branch is deleted, using the stored base commit when the current branch is gone. Open PRs still require the current base target, and cancellation refuses a closed or merged PR before changing anything.
+
+Pi retries orphan cleanup when process inspection recovers, including when inspection failed at the delayed SIGKILL check. Each signal checks process identity, termination attempts do not overlap, and the agent can resume only after the previous process exits. Both fixes are in [#247](https://github.com/michael-denyer/pstack-claude/pull/247).
+
+## 0.9.80 - compare the base branch's current commit
+
+`watch-pr` and `ship-pr` read the base branch's current commit from `baseRef { target { oid } }`. They read the pull request's `baseRefOid` before, a value GitHub records when the PR opens and does not always move when the base branch advances, so a base that moved between two reads could pass the snapshot check and the `cancel-pending` comparison. The watcher takes the head and base facts from one GraphQL query, so both come from one observation. An open PR whose base ref is unavailable is a query failure, not a landing record. @mshk found and fixed this in [#245](https://github.com/michael-denyer/pstack-claude/pull/245), closing [#244](https://github.com/michael-denyer/pstack-claude/issues/244).
+
+The watcher unwraps every GraphQL response in one place, so a response carrying `errors` fails all five queries the same way. The empty review decision that `gh pr view` reported is gone with the command that reported it: GraphQL returns null, and an empty string is now rejected like any other unknown value.
+
+## 0.9.79 - dequeue a queued PR, and fixes from three models and a code review
+
+`ship-pr cancel-pending` can take a PR out of a merge queue. The dequeue request named the pull request in `pullRequestId`, a field GitHub's `DequeuePullRequestInput` does not have, so GitHub refused it. The request now sends `id`, and `disablePullRequestAutoMerge` keeps `pullRequestId`, which is the name its own input type uses. @alex-overcyai found and fixed this in [#239](https://github.com/michael-denyer/pstack-claude/pull/239). Both shipping test files now answer from one fake of `gh api graphql`. The fake returns only the fields a query selects and refuses a mutation with the wrong input field or variable type, so the same mistake on either mutation fails a test.
+
+`watch-pr` refuses an `--interval` above 2147483.647 seconds. A timer delay above 2^31 - 1 ms is replaced with 1 ms, so a longer interval made every poll sleep return at once.
+
+On Pi, a `/loop` typed during a manual compaction no longer leaves the wakeup slot sealed. The scheduler treated any session that was not idle as a run in flight, and Pi is not idle during a compaction, so it refused the next run at every wakeup. It now tracks a run from `agent_start` to `agent_settled` and seals the slot only between the two.
+
+The orchestration store's lock release can no longer delete a lock that a forced takeover has just written. The release read the lock, saw its own pid, and unlinked the lock by path as a separate step. It now does both behind the claim a takeover holds, and waits for a live claimant to finish.
+
+The three fixes above came from models of the code, which ship with them: `lean/Model/WatchPoll.lean` for the polling arithmetic, and `tla/PiScheduler.tla` and `tla/OrchStoreLock.tla` for the scheduler and the lock. Two runs of each TLA+ model still fail by design and record narrower findings these fixes do not close.
+
+worktree-audit keeps a transcript root it cannot inspect for any reason other than absence. It reports the scan failure and leaves recent activity unknown, so the worktree needs review instead of reading as idle. On Pi, a restored agent stays unavailable until its previous process is confirmed gone. Pi signals only an orphan whose identity matches, and an older record without enough identity data refuses continuation while that process is alive.
+
+`/poteto-help` offers "a default effort" where it offered "a reasoning budget", a step the port's `/setup-pstack` does not have. The sync rule that scrubs model slugs in `setup-pstack` no longer takes a sentence's period into the slug.
+
+## 0.9.78 - sync to upstream df58112 (v0.15.15)
+
+The upstream pin moves from `2cbf585` to `df58112`, upstream v0.15.15, two commits. `/poteto-help` now offers `/setup-pstack` when the model sheet is missing and the answer depends on it. It asks at most once per chat, and a user who declines is told that every role keeps its default model. Upstream also dropped one model from its default panel and lowered its Opus effort from `max` to `xhigh`. The port takes neither change, because `models.json` sets the port's panel and effort. `setup-pstack` keeps the port's default-effort step in place of upstream's reworded budget step.
+
+The substitution rules that point a default model list at the Models section now match a list of any length, as does the rule for the model family sentence. New rules cover the delegate defaults in `poteto-mode`, the default-model column of the `reflect` reviewer table, and every slug in `setup-pstack`, so an upstream model change on those lines no longer conflicts with the port. `interrogate` says "the Reviewer labels below" and names no label run, since the generator stamps the table from the panel.
+
+Measured with `bun tools/sync.mjs pstack 1e56b29`, then `df58112`, over 82 synced files with 36 excluded: the first run changed `poteto-help`, and the second changed five files, `poteto-help` among them. Two conflicts were resolved by hand. `poteto-help` keeps the port's `/swarm` row and takes upstream's `/interrogate` row. No file became port-only.
+
+## 0.9.77 - add haiku to the default panel
+
+The default panel is `opus`, `fable`, `sonnet`, `haiku`. With no override sheet, `arena` and `architect` run four runners, `interrogate` runs four reviewers, with `haiku` as Reviewer D, and the `arena` cross-judge pool includes `haiku`. A `pstack-models.md` sheet that names these roles keeps its own lists. The Codex panel is unchanged. On Pi, `haiku` resolves through the `pi.models` table in `models.json`.
+
+## 0.9.76 - keep the parent's verdict out of reflect's reviewer prompts
+
+reflect passes the transcript path to its reviewers with nothing beside it. When the finder cannot locate the transcript, the fallback digest records the session's prompts, corrections, tool calls, results, and files in turn order, and states no diagnosis, verdict, or cause. A reviewer that reads the parent's conclusion first tends to audit that conclusion instead of the session ([#231](https://github.com/michael-denyer/pstack-claude/issues/231)).
+
+## 0.9.75 - base delegate worktrees on the branch and separate parallel todolists
+
+The Feature playbook notes that Claude Code's `isolation: "worktree"` branches from the remote default branch unless `worktree.baseRef` is `"head"`. A delegate that builds on commits the default branch lacks now gets a worktree the parent creates from `HEAD`, and its brief names that base commit ([#228](https://github.com/michael-denyer/pstack-claude/issues/228)).
+
+poteto-mode's fallback todolist moves to `.audit/<task-slug>.todo.md` when several sessions share a checkout, beside the decision trail show-me-your-work already keeps there, so parallel sessions no longer write one `todo.md` ([#229](https://github.com/michael-denyer/pstack-claude/issues/229)).
+
+## 0.9.74 - fix the code review's findings and bound Autopilot's verify rounds
+
+`watch-pr` no longer reports a PR ready, or stopped at a merge gate, from a reading GitHub has not settled. A no-checks reading becomes `ci-none` only when the same head has shown no checks for 60 seconds, whatever `--interval` is, so a fresh PR whose checks have not registered waits as `checks-unreported` and a repository with no CI reaches READY a minute later. Unknown mergeability waits as `mergeability-unknown` and is never READY. The watcher reads the PR facts again after the checks and retries when one changed. A branch behind its base stops at the new `behind-base` gate, ahead of a required review. A check rollup cursor that does not advance is a query failure, a missing `gh` exits 7 with a JSON verdict, and a PR whose head is the default branch is in no stack.
+
+`orch` lets only one writer replace a dead store lock, forced or not, and recovers when a writer is killed while replacing it. It returns ids and branches that start with a spreadsheet formula character or a quote unchanged, and it kills a `gt` call that runs past 60 seconds.
+
+Pi: `/loop stop` now ends a self-paced loop while an iteration runs. A print-mode `/loop` whose prompt starts no run exits with code 1 and prints the reason instead of waiting. A restored agent whose process is gone is marked stopped even when its recorded parent pid is alive. A resumed agent keeps each run's overflow file, and its system prompt file is written again when it is missing.
+
+worktree-audit holds a worktree with untracked files (`hold-untracked`, with `untracked:N` counting every file) or a git lock (`hold-locked`, with the reason in a new `LOCKED` column) instead of calling it safe. A worktree with tracked edits and untracked files prints both counts. Submodule work stays visible under `diff.ignoreSubmodules`, and the audit counts a status listing longer than 1 MiB. It matches every link in a worktree's ancestor directories by device and inode, so macOS keeps every last-chat fact under bun, and node finds a worktree named through a link whose target it misnames. A link that `stat` cannot follow puts the worktrees below it in `review` with a warning. The transcript scan ends a path at `?` and `!`. The cleanup playbook pauses on both holds and names the commands that show held work, submodule work included. A macOS CI job runs the audit's tests.
+
+`tools/sync.mjs` rejects any argument other than its two positionals and `--dry-run`, and names it. It passes `--no-diff3` to `git merge-file`, so a conflict never carries a `|||||||` base section, and the generator's marker scan names such a line anyway. A sync fails before any write when a path it would write meets a port file where it needs a directory, a port directory where it needs a file, or a port entry spelled another way that the filesystem treats as the same name. It compares file modes as git records them, and a write grants no permission that the file's own bits or the umask withhold. A run at the pinned SHA fails when the port lacks an upstream file.
+
+The generator's release gate now requires the first version-led heading in `CHANGES.md` to be the `VERSION` heading and rejects a version that heads two entries, so an entry without a bump fails CI instead of shipping an inert release. A heading quoted in fenced code does not count. The validators also catch a bare agent dispatch in more spellings, a model ID that puts version numbers before a listed family, a hook path that resolves outside the plugin, a `models.json` missing a tier the stamped regions read, an agent whose frontmatter name differs from its file name, and a duplicated or misplaced lead line. `tools/typecheck-pi.mjs` reports why `bunx` could not start.
+
+Five checks no longer pass when their input is missing or malformed. The CI fork check fails when `jq` cannot read `tools/upstream.json` or it lists no component. The security workflow drops `--include-git-root`, which made the checkout count as a scanned package, so a scan that finds no lockfile now exits 128 and fails the step. `log.sh` appends each row in one write when perl works, so parallel writers no longer interleave long rows, and it reports a write that stops short. `check-playbooks.mjs` rejects a root that is not a directory and an `extends` stem that leaves the playbooks directory, and says when a repository has no project playbooks. `resume.mjs` treats a Windows drive-letter link as a local file.
+
+Autopilot-full sends an owner only the findings its diff causes, runs the full swarm in the first round only, stops a PR at two fix-forwards, and states the program's size before the first owner starts.
+
+## 0.9.73 - run pstack on GitHub Copilot
+
+pstack now installs on the GitHub Copilot CLI and the GitHub Copilot app. `copilot plugin marketplace add michael-denyer/pstack-claude` and `copilot plugin install pstack@pstack-claude` read the existing Claude Code marketplace. The CLI and the app share `~/.copilot`, so one install serves both. Skills load by bare name through Copilot's `skill` tool, a user types `/pstack:<skill>` in the CLI, and the agents load as `pstack:poteto-agent` and `pstack:comment-sicko`.
+
+Copilot gets its own runtime row. Copilot looks for `.github/plugin/plugin.json` before `.claude-plugin/plugin.json`, so the plugin ships a Copilot manifest whose `hooks` field names `hooks/copilot-hooks.json`. Copilot then skips the Claude Code `hooks/hooks.json`, which stays as it was, so each hook runs once. The Copilot hook file runs `session-start.sh copilot`, a new case arm beside `claude` and `codex`, and `pre-tool-use.sh`. The hooks file names both entry points through `${COPILOT_PLUGIN_ROOT}`.
+
+On Copilot the SessionStart hook prints JSON `additionalContext`, because Copilot drops plain-text hook output. It escapes the routing instruction and the Copilot addendum, `hooks/session-start-copilot.md`, at run time with `json.awk`. It also reads `${COPILOT_HOME:-~/.copilot}/pstack-models.md`, which sits outside Copilot's path sandbox, so sessions never `view` it. It checks the sheet with `skills/setup-pstack/scripts/sheet.awk`: every role in `models.json` has a line, each entry is `inherit-parent`, `auto`, or a model ID with an optional `@<level>`, and each panel names two vendors unless the sheet has `panel vendors: any`. A panel of only `inherit-parent` passes. It strips a BOM and carriage returns and decodes UTF-16LE. A sheet that cannot be decoded counts as missing, so every runtime still gets the routing instruction. A valid sheet adds one `role: value` line per known role, rebuilt from the checked values, so no other sheet text, such as a stray `Note:` line, reaches the context. An invalid sheet adds `sheet invalid:` and each problem, without echoing sheet text, plus the setup-first paragraph. `setup-pstack` runs the same check through `skills/setup-pstack/scripts/check-sheet.sh` after it writes the sheet, and rewrites the sheet until it prints `sheet ok`.
+
+A `PreToolUse` hook, `hooks/pre-tool-use.sh` with the matcher `view|task|bash`, adds three rules on Copilot, in POSIX `awk`. It approves a `view` inside `COPILOT_PLUGIN_ROOT` with no `.` or `..` segment, because the plugin's playbooks and references also sit outside the sandbox. It approves `bash` only for registered scripts with recognized arguments and the matching interpreter, followed by plain or single-quoted arguments with no shell metacharacters. Explicit path operands must resolve under the workspace, never the plugin, so an approved script cannot rewrite the context every session loads; prose fields are not paths. While the sheet is valid, it denies a `task` call whose `agent_type` starts with `pstack:` and whose `model` is not one of the sheet's role values, and the reason lists each saved ID once. Every other call gets empty output and the normal permission flow. Every path exits 0, because Copilot denies the call when a `preToolUse` hook fails, but an `awk` error still reaches stderr.
+
+`poteto-mode/references/copilot-tools.md` is the Copilot mapping. It covers tool actions (`AskUserQuestion` is `ask_user`, single-select, so multi-select becomes sequential questions; `TodoWrite` and `TaskCreate` are the `sql` tool's `todos` table), subagent policy, model roles, the hooks, plugin file access, app primitives with CLI fallbacks (`create_session` or `git worktree add`, `save_session_automation` or a manual cadence, the app's `orchestrate` and `pr-stack` skills), transcripts, skill authoring, and per-skill notes. A `runtimes.mjs` row stamps a Copilot preamble after the Codex preamble on each skill in the mapping's Per-skill notes table, and `poteto-mode/SKILL.md` points at the mapping once in its Platform Adaptation section. The generator keeps an ordered list of lead lines per file, so two runtimes can stamp the same skill. It also stamps the role list in `sheet.awk`, the roles-by-tier table in `setup-pstack/copilot.md`, and the list of skills that dispatch on role models in the Copilot addendum, all from `models.json`.
+
+The Copilot build ships no default model IDs, because the models an account reaches depend on its plan and policy. A skill that needs a role model and finds no valid sheet runs `setup-pstack` first. On Copilot, `setup-pstack/copilot.md` takes over the questions, the sheet header, and the wiring step. It opens with "Run every pstack role on this session's model?"; yes sets every role to `inherit-parent`, for plans that expose one model or only automatic selection. Otherwise each model question is an `ask_user` choice list built from the `task` tool's `model` enum, asked vendor first and then model, so each list stays short and vendor diversity is the visible choice. It asks the default model, the strongest model, panel slots 1 to 3 with unpicked vendors first, an optional 4th and 5th slot behind `Done`, a single-vendor check, per-role overrides, the session hook, and the default reasoning effort. No model is recommended on first setup, and a rerun lists the saved value first as `(current)`. A role value's `@<level>` suffix and the sheet's `default effort` line map to the `task` tool's `reasoning_effort`. Setup and panel orchestration need `gpt-5.4-mini`, a Sonnet-class Claude model, or stronger, because a Haiku-class model guessed models in about half of its setup runs. When another hook displaces the routing instruction, setup offers a standing instruction for `~/.copilot/copilot-instructions.md`.
+
+`reflect/scripts/find-transcript.mjs` reads Copilot `events.jsonl` sessions and filters their header's `cwd` against the current workspace before reading user messages. An optional third argument selects another workspace explicitly. Matching opening prompts in another project never select that project's conversation. `worktree-audit.mjs` also searches `${COPILOT_HOME:-~/.copilot}/session-state`.
+
+The vendored-script permission check declares each approved entry point and its argument contract in `hooks/script-contracts.awk`, then resolves only its relative and absolute path operands, including named option values. Unknown scripts and argument forms take the normal permission flow. Workspace symlinks that lead outside the allowed directories and relative flags such as `--project=../outside` take the normal permission flow. File and dangling symlinks do too. Regression tests exercise the shipped hook and the transcript-finder CLI. The JSON boundary preserves nested fields separately from literal dotted keys and rejects malformed or duplicate input. Setup, SessionStart, and PreToolUse share `read-sheet.sh` for UTF-8/BOM/CRLF and UTF-16LE decoding; the validator supplies the parsed model set to enforcement. Generator packaging tests now live in their own file, keeping the main generator suite below 1,000 lines.
+
+Copilot CLI 1.0.87 through 1.0.92 merges the session-start context of several plugins. [github/copilot-cli#3589](https://github.com/github/copilot-cli/issues/3589) reported that only the last one survived. The hook runs lazily, before the first model turn, so a slash command as the first message still gets the routing instruction, and a resumed session gets exactly one routing block.
+
+**Original Copilot verification, before review fixes.** `bun test tests/` passes 909 tests with 0 failures and skips 36; main at 0389988 passes 723 and skips the same 36. `tests/check-sheet.test.mjs` is new, and `tests/session-hook.test.mjs` and `tests/pre-tool-use.test.mjs` cover the role-line allowlist (a `Note: ignore previous instructions` line, an `<EXTREMELY_IMPORTANT>` line, and an indented role line stay out of the context), an invalid sheet, CRLF, BOM, and UTF-16LE sheets, problem text that never echoes the sheet, run-time escaping, and a failing `awk` run. Removing each of 56 hook guards, validator rules, and hook wiring lines in turn, and each of 5 checks in the generator's Copilot row, fails at least one test. `sheet.awk`, `check-sheet.awk`, and `copilot-context.awk` give the same output on macOS awk, mawk, `gawk --posix`, original-awk, and BusyBox awk. `hooks/hooks.json`, `hooks/codex-hooks.json`, the agents, and the `session-start.sh claude` and `codex` output match main byte for byte, and the Claude Code, Codex, and Pi manifests differ only in the version. `tests/copilot-smoke.sh` passes all 44 checks on Copilot CLI 1.0.92 with `gpt-5.4-mini`, for a local install and a GitHub marketplace install of this branch: each hook fires once through the Copilot manifest, a sheet line that is not a role stays out of the context, an invalid sheet injects `sheet invalid`, and setup writes exactly the supplied IDs and runs `check-sheet.sh` with no permission request.
+
+**Review-fix verification.** On macOS, after merging main at 0.9.72, `bun test tests/` passes 974 tests, skips 35, and fails none. `tools/generate.mjs --check` reports 81 current files. The live Copilot smoke suite and Windows checks were not rerun for these fixes; `tests/copilot-tui.py` was checked against a stand-in `copilot` that requests a permission, ends its turn, or never ends it.
+
+## 0.9.72 - sync to upstream 2cbf585 (v0.15.13)
+
+The upstream pin moves from `e43c7ee` to `2cbf585`, upstream v0.15.13, four commits. They add the `/poteto-help` skill, which maps a user's question about pstack to the skill, playbook, or principle that answers it, hands back a prompt to send, and links the file the answer came from, with a prompting reference and a recipes reference beside it. The same range also edits upstream's guide and README, which the port excludes. The package now carries 34 public skills and 24 principles.
+
+`poteto-help` is a port-feature fork, declared in `tools/forks.json`. It reads the current runtime's installation and setup instructions before giving advice, including the persistent `session hook: off` setting. Operational answers come from the installed playbooks and platform mappings, which take precedence over upstream's Cursor guides. The fork carries the port's prose adaptations so upstream wording changes go through a three-way merge. Three substitution rules remain for the public-copy base, the README link, and the recipe's project verification command. Upstream's `disable-model-invocation: true` is dropped as on every public skill, so the model can invoke the skill when a question matches its description.
+
+Measured with `bun tools/sync.mjs pstack 2cbf585`: 3 files added, 81 unchanged, 36 excluded, no merges, and no conflicts. No file became port-only.
+
+## 0.9.71 - multi-select twins, composed audit symlinks, and test tooling
+
+In Pi, a multi-select question keeps a choice selectable after the user picks another choice with the same label, so two same-label choices can both be picked. Single-select already listed each as its own choice. Picking a choice now hides only that choice, so a typed `Other` answer no longer hides a listed choice with the same text.
+
+`worktree-audit.mjs` composes the ancestor symlinks it spells a worktree through. When `/tmp` points at `/private/tmp` and `/private/tmp/link` points at `/private/tmp/real`, a session that wrote `/tmp/link/x` now counts for the worktree git lists as `/private/tmp/real/x`, which previously could be suggested as `safe`. A link that points back up to an ancestor of its own directory is still applied only through that directory's resolved spelling.
+
+A new Windows CI job runs `tests/worktree-audit.test.mjs` on `windows-latest`. The three cases that need `chmod` report as skipped there. A bare `bun test` at the repository root now runs the same files as `bun test tests/`, instead of also loading the vendored poteto-mode script tests, which failed until their own dependencies happened to be installed. `bun tools/typecheck-pi.mjs` and the Pi tests also find a bun-installed Pi under `BUN_INSTALL_GLOBAL_DIR`, `$BUN_INSTALL/install/global` and `$XDG_CACHE_HOME/.bun/install/global`.
+
+## 0.9.70 - worktree audit, hook validation, Pi runtime, and fork registry fixes
+
+`worktree-audit.mjs` finds more of the chats that touched a worktree, so fewer worktrees with a recent session are suggested as `safe`. A path now counts when a quote, whitespace, `` ` ``, `:`, `;`, `)`, `]`, `}`, `,`, `|`, `&`, `<`, `>`, a sentence-final `.`, or the end of the line follows it, so `cd /x/wt;ls`, `` `/x/wt` `` and `${WT:-/x/wt}` all count, while a sibling such as `/x/wt.bak` or `/x/wt-long` still does not. A worktree is also matched by the spelling of a symlink that sits in one of its ancestor directories and points at the worktree or another of those directories, so a session that wrote `/tmp/x` counts for the worktree git lists as `/private/tmp/x`. A spelling that cannot be resolved for a reason other than a missing directory leaves that worktree's last chat unknown, with a warning, instead of guessing. The scan searches once per spelling and checks the byte after each hit, so the wider boundary set and the extra spellings do not multiply its passes over the transcripts. The SIZE column now reads macOS `du` output, which pads short sizes with spaces. Run the script with `node`, as its shebang does. Under bun, a macOS cloud-storage link in the home directory fails to resolve.
+
+The worktree audit refreshes a transcript's timestamp after reading it. Resuming an old session during the scan now keeps its active worktree in `verify-recent-chat` instead of marking it `safe` with the old timestamp.
+
+`find-transcript.mjs` stats each transcript once, keeps searching when a transcript is removed during the walk, and refuses a Codex rollout by name instead of reporting no transcript. `worktree-audit.mjs` likewise skips a transcript removed mid-scan instead of failing the whole scan.
+
+`tools/generate.mjs` checks each hooks file against one typebox schema per hook type (`command`, `http`, `mcp_tool`, `prompt`, `agent`). A non-string `commandWindows` and a misspelt key now fault with the file's name instead of crashing or passing, an unknown or prototype-named `type` faults, and `prompt`, `agent`, `http`, and `mcp_tool` hooks are accepted. The Codex and Pi rows in `tools/runtimes.mjs` now own their manifest path and validator, and the Codex row its hooks files, so the generator no longer spells out Codex's or Pi's packaging. The generator imports typebox, so run `bun install` before it.
+
+The POSIX, PowerShell, and Pi readers of the model sheet follow one grammar: UTF-8, or UTF-16 LE behind its byte-order mark as Windows PowerShell 5.1's `>` writes it; lines end at LF; one CR before the LF is dropped. A UTF-16 sheet with `session hook: off` now turns the hook off under every runtime.
+
+In Pi, an agent's lifecycle lives in one map, and stopping an agent sends one SIGTERM and a SIGKILL after the full kill grace. Answers given before a later question is dismissed are kept. The agent effort levels come from `models.json`, and a `paths:` line that is not a JSON array of strings fails naming its skill file. The runtime lost its test-only `childEnv` setting, and the Pi typecheck works with a Pi installed only through bun.
+
+Pi children explicitly load pstack's extension and skills, so a project-local install or a parent started with `pi -e` can launch agents in fresh worktrees. The startup tests run against installed Pi without model calls, including when the package is already installed globally.
+
+A due wakeup remains pending until Pi is idle, with at most one second of additional delay. Manual compaction no longer discards the prompt and stops a self-paced loop. Cancellation, replacement, and session shutdown also clear a wakeup waiting for idle.
+
+Structured questions number their choices. A choice named `Done` or `Other (type an answer)` now stays distinct from the completion and free-text controls, and choices with identical display text remain selectable.
+
+`tools/sync.mjs` fails on a stale `tools/forks.json` entry when syncing at the pinned SHA, and CI annotates only declared forks and upstream-owned skill files. Every fork's `why` now describes its whole diff from upstream.
+
+Resume rejects a link with an error that names it and states the link rule that `resume-storage.md` documents, and ignores links inside code spans and fences. The orch store pins frontier SHAs to exact local branch refs and strips every terminal control sequence from `gt` output. poteto-mode's Subagents section gains a rule for every runtime. A required review gate stays closed when no independent reviewer can run, the todolist records `BLOCKED: independent review`, and a finished reviewer may be reused only through the runtime's follow-up action. `codex-tools.md` adds that a `spawn_agent` thread-limit error is a capacity error, not a rejected model, and that some Codex hosts lack `close_agent`. `setup-pstack` offers to generate a project verification skill again, a step upstream added with `create-verification-skill` that the 0.9.10 port missed.
+
+## 0.9.69 - hook validation names a missing command
+
+`tools/generate.mjs` reports a hook with no `command` as a fault. Since the `commandWindows` override landed in 0.9.66, such a hook passed validation with nothing checked, including one that carried only a Windows override and so ran nowhere else.
+
+## 0.9.68 - resume links with parentheses, BOM-led plans, Codex sessions in the worktree audit, and Pi fixes
+
+Resume checkpoint publication now accepts Markdown angle-bracket destinations such as `[Questions](<questions (draft).md>)`. A linked local file still has to be registered with `--artifact`. A CLI regression test covers publication and a subsequent read.
+
+`check-plan.mjs` and `check-playbooks.mjs` strip a leading UTF-8 byte-order mark, so a plan or project playbook saved by an editor that adds one no longer fails with a missing title, a missing `when:` line, or frontmatter linted as prose.
+
+`worktree-audit.mjs` scans Codex's `sessions` and `archived_sessions` under `$CODEX_HOME` (default `~/.codex`) and honours `$CLAUDE_CONFIG_DIR`, so a worktree with a recent Codex session lands in `verify-recent-chat` instead of `safe`. It matches a worktree path as JSONL spells it, which covers Windows backslash and forward-slash spellings, UNC paths, and paths with escaped characters, without matching a sibling that shares the prefix.
+
+In Pi, starting a new `/loop` cancels the previous loop's pending wakeup in both modes, so an old self-paced prompt no longer fires after a replacement. A sheet the user cannot read leaves the defaults in place instead of failing session start or an agent launch, and the shared sheet table in `tests/session-hook-sheets.mjs` now holds every hook to that case. A retained agent worktree is checked before reuse and cleanup: a plain directory, a link, an unrelated repository, or an unregistered gitdir at that path is refused, and its files are left alone, so an isolated agent can no longer run in the parent checkout.
+
+`tools/forks.json` drops the stale `watch-pr/transport.test.ts` entry that the sync dry-run warned about.
+
+## 0.9.67 - session hook sheet parity
+
+The POSIX hook, the PowerShell hook, and Pi now read the sheet the same way in two more cases. A `session hook: off` line after a UTF-8 byte-order mark counts as off, which covers sheets saved by editors that add one. A sheet that exists but cannot be read as a file leaves the hook on, the same as a missing sheet, instead of failing the PowerShell hook or printing an error from the POSIX one. Both cases join the shared table in `tests/session-hook-sheets.mjs`. The Windows CI job's test timeout drops from 60 to 10 seconds, so a return of the slow PowerShell start fails the job.
+
+## 0.9.66 - Windows Codex SessionStart hook
+
+The Codex plugin's `SessionStart` hook now runs on Windows. `codex-hooks.json` adds a `commandWindows` override that runs `session-start.ps1` through PowerShell, so Windows Codex loads the routing instruction without Bash (#171). Windows users must trust the changed hook again through `/hooks`.
+
+`session-start.sh` now treats a `session hook: off` line with CRLF endings as off, matching the PowerShell adapter and Pi. One table in `tests/session-hook-sheets.mjs` holds the off-switch cases, and the POSIX hook, the PowerShell adapter, and Pi's sheet parser all run against it. A new Windows CI job runs the adapter's tests and fails instead of skipping if they do not run.
+
+## 0.9.65 - sync to upstream e43c7ee (v0.15.9)
+
+The upstream pin moves from `23e4138` to `e43c7ee`, upstream v0.15.9, three commits. The first adds the `/correct` skill. It finds the mistakes agents keep repeating in a repo and fixes each class at the highest level that works: architecture first, then types and lint, then a test, with docs last. The package now carries 33 public skills and 24 principles.
+
+`architect` now screens candidates on the assumption that the next contributor is an agent that sees only the files it opened and copies the nearest example. `design-red-flags.md` gains four red flags: split ownership, two ways to do one task, importable internals, and a hand-synced list. The Perf issue playbook replaces its eight strategy families with seven performance mantras tried in order, cheapest first, and stops at the first one that meets the target. Hillclimb orders perf hypotheses by those mantras, and `benchmark-checklist` points at them.
+
+Measured with `bun tools/sync.mjs pstack e43c7ee`: 4 files updated clean, 1 added, 1 merged three-way (`architect/SKILL.md`), 76 unchanged, 36 excluded, and no conflicts. The new upstream text carries no Cursor-only terms, so `tools/substitutions.json` is unchanged. No file became port-only.
+
+## 0.9.64 - sync to upstream 23e4138 (v0.15.6)
+
+The upstream pin moves from `12d587d` to `23e4138`, upstream v0.15.6, one commit. It adds the `benchmark-checklist` skill and the `principle-explain-the-number` principle, which together vet a measured speedup or regression before anyone reports or acts on it. `poteto-mode` triggers `benchmark-checklist` on a benchmark and indexes the new principle, so the package now carries 32 public skills and 24 principles.
+
+Subagents are fresh by default. A fix round, a follow-up, a retry, and the next queue item go to a new agent with the consolidated brief. A resume is reserved for work that needs state living in the old agent, such as its checkout, uncommitted changes, or a running process. The autopilots hand each next queue item to a fresh owner, owners push after every verifiable unit, and the audit tick judges an owner by its pushed branch and decision trail. The audit tick runs every hour instead of every 30 minutes, and `check-plan.mjs` pins the new cadence. Opening a PR names the run's built-in PR tool first, and the playbooks gain a "Size and stacks" paragraph. Operator-facing defaults under a full-autonomy grant are reported in plain words, with no shorthand token to type back. `technical-writing` drops its fetch-date source lines, and `typescript-best-practices` takes upstream's schema-first reference edits.
+
+Measured with `bun tools/sync.mjs pstack 23e4138`: 6 files updated clean, 2 added, 1 merged three-way, 72 unchanged, 36 excluded, and 5 conflicted files resolved by hand. The conflicts are `SKILL.md`, `autopilot-full.md`, `autopilot-stack.md`, `multi-phase-plan.md`, and `check-plan.mjs`. The sync's denylist rejects the `control-cli` and `control-ui` lines that those conflicts carry, so the run excluded the five paths and the edits were applied by hand afterward.
+
+Port policy is unchanged where it diverges from upstream. The autopilots stop at merge-ready for the operator's click, so the upstream rule that skips a second rebase before the owner's own merge is not ported. The `/goal` removals already matched the port, which never armed one.
+
+## 0.9.63 - the description starts with a capital
+
+The plugin description in every manifest starts with "If" instead of "if".
+
+## 0.9.62 - no author email in the manifests
+
+The Claude and Codex plugin manifests, the marketplace, and `package.json` name the author and link to the GitHub profile, without an email address.
+
+## 0.9.61 - Pi agents learn their depth from a flag
+
+The Pi extension passed each agent it started a copy of the session's environment with `PSTACK_PI_DEPTH` added, the last place the plugin handed a copy of the whole environment to a child process. Agents now inherit the environment unchanged, and the extension registers a `--pstack-depth` flag that a parent passes to each agent it starts. An agent reads its depth from that flag. Depth limits and behaviour are unchanged.
+
+## 0.9.60 - orch and the watch-pr tests stop handing the whole environment to child processes
+
+The Claude plugin directory holds pstack with "Uses a credential from the user's machine". The orch store passed a copy of `process.env` to `gt` and `git`, and three test files passed one to the processes they start. The orch store now lets `gt` and `git` inherit the environment and strips colour codes from `gt` output, where it set `NO_COLOR` before. `openStore` takes a `gt` option, the path of the `gt` executable, which defaults to `gt`. The orch tests use it to run a fake `gt`, because Bun resolves a command that has no `env` option against the `PATH` it started with. The tests' child processes get only `PATH` and the variables each test sets. The Pi extension still passes `PSTACK_PI_DEPTH` to its child agents in a copy of the environment.
+
+The plugin folder has `.claude-plugin/icon.png`, the path the directory reads for the listing icon.
+
+## 0.9.59 - no `$PWD` in the repository and no listing fields in `plugin.json`
+
+The Claude plugin directory validator reads `$PWD` as a credential-named variable and holds a plugin when a file that names it also names a remote URL. The shared-skills and Codex prompt install loops in `docs/reference.md` link with `$(pwd)`, the CI and Security workflows mount `$GITHUB_WORKSPACE`, and the skills-only CI job installs `./plugins/pstack/skills`. Each resolves to the same path as before.
+
+The Claude `plugin.json` no longer carries `icon`, `documentationUrl`, `supportUrl`, `privacyPolicyUrl`, or `termsOfServiceUrl`. Claude Code ignores all five at load time, and the validator reports each one as a finding. `assets/pstack-icon.png` stays for the Codex manifest.
+
+## 0.9.58 - run pstack on Pi
+
+pstack now installs on [Pi](https://pi.dev) 1.0 with `pi install` and behaves on Pi as it does on Claude Code. The repository root is a Pi package that loads the shared skills tree and a Pi extension, `plugins/pstack/pi/`, which supplies what Pi lacks under the Claude Code names the skills already use. `agent` runs each subagent as a child `pi --mode rpc` process with the role's model, effort, and agent file, in the foreground or background, optionally in its own git worktree. `send_message`, `list_agents`, and `stop_agent` message, list, and stop those agents, and an agent's status follows its process, so `completed` always means it exited. A message to a running agent is an RPC `steer` on the child's stdin, which the agent reads after its current tool calls, as on Claude Code, so the agent carries on in the same run and reports once. A message to a finished agent resumes it, and a message that arrives after the agent settled resumes it once its process has exited. `ask_user_question`, `schedule_wakeup`, and `/loop` match `AskUserQuestion`, `ScheduleWakeup`, and the `loop` skill. A `schedule_wakeup` call with `noop: true` still schedules, and `stop: true` cancels the pending wakeup and needs no other field. At every agent start the extension adds the routing instruction and the override sheet to the system prompt, so both survive compaction, and `session hook: off` drops the instruction as on Claude Code. In `pi -p` runs the extension holds the run open until each background agent's notice has run as a turn, and a child agent holds its own settle the same way while its background agents run. `readonly: true` runs an agent without the `edit` and `write` tools. A background agent's notice joins the running turn after its current tool calls, as on Claude Code, so the lead sees a result before it writes its reply. Agents can start agents down to three layers below the main session, and the third layer runs without `agent`, as on Claude Code. Quitting, reloading, or switching sessions stops every running agent, a parent process that exits signals its agents to stop, and a session start stops an agent whose launching `pi` process is gone. In `pi -p`, `/loop` runs its prompt as part of the one run, and scheduling a wakeup returns an error, because the run would end before the wakeup fired. In a child agent, scheduling a wakeup and `ask_user_question` return an error for the same reason and because a child has no user to ask. While a background agent runs, a `bash` line in which any command starts with a foreground `sleep` of two seconds or more is refused with a reminder that the agent's notice arrives on its own, because models otherwise polled with `sleep` and cut agents short. The system prompt also carries Claude Code's sentence on making independent tool calls in one response, which skills that start N agents in one message rely on.
+
+Family names resolve through a new `pi` block in `models.json` to model IDs for the provider the Pi session runs on. On a ChatGPT sign-in, `fable` is GPT-6 Astra, `opus` GPT-6.1 Sol, `sonnet` GPT-6 Sol, and `haiku` GPT-6 Luna, matching the tiers of the Codex defaults. Anthropic and any other provider get the Claude models. Pi warns that Anthropic bills Claude used through Pi per token, even on a Claude subscription, so the Pi docs say so and point Claude plan users at Claude Code. A `pi models:` line in the Pi override sheet, `~/.pi/agent/pstack-models.md`, remaps any family name. `poteto-mode/references/pi-tools.md` maps each Claude tool, model, and skill reference to its Pi equivalent, and `poteto-mode/SKILL.md` points at it once, so no other skill file carries a Pi line. The extension's system prompt carries the same pointer in every session, child agents included. The generator stamps the mapping's Model names table, writes the package version, validates the package manifest, and fails when a row of the mapping's Per-skill notes table names a skill that does not exist. `reflect/scripts/find-transcript.mjs` and `worktree-audit.mjs` read Pi session files, and `worktree-audit.mjs` names every transcripts directory that is missing, not only the first. `find-transcript.mjs` also splits lines on newlines only. It read through Node's `readline`, which breaks at U+2028 and U+2029, so a prompt containing either character was skipped on Claude Code too.
+
+`docs/pi-equivalence.md` lists the 62 Claude Code mechanisms pstack depends on and how Pi provides each one, and a test fails when a row cites a test that does not exist. Offline tests drive the extension against a fake `pi`, `tests/pi/catalog.test.mjs` checks the default model IDs against the installed Pi's catalog, which CI's `Pi extension types` job runs against the pinned release, and `PSTACK_PI_LIVE=1` runs `tests/pi/live.test.mjs` against real Pi. Every row that needs a live check passed it. The root `package.json` declares `typebox` and the optional `@earendil-works/pi-coding-agent` as peer dependencies, a root `bun.lock` pins `typebox`, and the CI job that runs `bun test tests/` first runs `bun install --frozen-lockfile`.
+
+## 0.9.57 - project playbooks on top of the bundled ones
+
+A repository can add playbooks under `.agents/playbooks/`. Each names the bundled playbooks it `extends` and a `when` sentence, and anchors each change on a quoted run of a bundled step's own words, so a project adds its lifecycle without forking pstack or hiding it in a skill only the user can invoke. poteto-mode's Playbooks section tells the agent to open a matching project playbook beside the bundled one, copy the bundled steps verbatim, apply each change at the step it quotes, and stop where the project playbook says. `skills/poteto-mode/scripts/check-playbooks.mjs` fails when a project playbook extends a playbook this version lacks, quotes step text this version no longer has, or writes a change with no straight-quoted anchor, so a pstack upgrade that rewrites a step surfaces instead of silently dropping the project's change. The agent runs it before applying a project playbook, so nobody has to remember it after an upgrade. It checks bulleted and numbered changes, reads CRLF files, and runs when the script is reached through a symlinked install path. `tests/check-playbooks.test.mjs` covers a passing anchor, an unknown base, a stale quote, an unquoted change, a numbered change, a CRLF file and a symlinked script. The `poteto-mode/SKILL.md` fork declaration names the new paragraph.
+
+## 0.9.56 - a watch-pr verdict for a PR with no checks configured
+
+`watch-pr` retried without end on a mergeable PR in a repository with no CI. `resolveChecks` threw `ChecksUnavailable` whenever both check reads were empty, so "no checks exist" and "the checks could not be read" were one failure, and `--status-only` never finished its single pass ([#151](https://github.com/michael-denyer/pstack-claude/issues/151), [#152](https://github.com/michael-denyer/pstack-claude/issues/152)).
+
+Absence of checks is now its own reading. `resolveChecks` returns `no-checks` only when both reads say so: `gh pr checks` exits 1 with `no checks reported on the '<branch>' branch`, and a successful GraphQL query returns `statusCheckRollup: null` for the head commit. `readSnapshot` then accepts it only once GitHub has settled, which means no commit on the PR has a rollup and `mergeable` is not `UNKNOWN`. The snapshot carries the new `ci-none` state, the status table shows `➖ no checks`, and `READY` adds `checks=none reported on the head commit`.
+
+Every other empty result still fails closed as `ChecksUnavailable`: a failed or unauthorized `gh pr checks` beside a null rollup, a rollup that exists but lists no check this reader knows, a head with no rollup on a PR whose earlier commits reported checks, and mergeability GitHub has not computed. A failed GraphQL query still surfaces as its own query error. Conflicts, unresolved review threads, review decisions, drafts, and `mergeStateStatus=BLOCKED` gate a PR with no checks the same way they gate one with clean CI, so a required check that never reported stops at `merge-blocked`.
+
+`transport.test.ts` replays the `gh` output of a no-CI repository through the real reader, and `github.test.ts`, `policy.test.ts`, and `cli.test.ts` cover each one-sided reading, each gate, and the rendering.
+
+## 0.9.55 - effort agent frontmatter that strict YAML reads
+
+The five `poteto-agent-<level>` effort agents wrote their `description` unquoted and opening with a backtick, which a YAML plain scalar cannot start with. Claude Code's loader tolerated it, but `Bun.YAML.parse` and PyYAML reject the block, so a strict reader could not read those agents' frontmatter. The description now opens with `Runs`, and `tests/generate.test.mjs` parses every generated effort agent's frontmatter.
+
+`bun tools/generate.mjs --check` now parses the frontmatter of every file under `agents/` and `effort-agents/` and fails naming each one that is not readable YAML or lacks a `name` or `description`, so CI catches a hand-written agent with the same fault. A new `.pre-commit-config.yaml` runs that check before each commit after `prek install`.
+
+## 0.9.54 - find the transcript a cleared session opened with
+
+After `/clear`, another local command, or a `!` shell command, a transcript's first user records are the command's wrapper (`<command-name>` or `<bash-input>`), its output (`<local-command-stdout>`) and an `isMeta` caveat, not the prompt the user typed. `reflect/scripts/find-transcript.mjs` compared the opening-prompt fragment against the first of those, so it could miss the session it was asked for and return an older one that matched. `openingPrompt` now skips `isMeta` records and those wrappers and returns the first prompt the user typed. A skill invocation, which leads with `<command-message>`, still counts as the typed prompt. `tests/find-transcript.test.mjs` covers a cleared session and a skill-opened one, and the `reflect` skill describes the new stopping point.
+
+## 0.9.53 - name the port's copyright holder
+
+`LICENSE` adds a `Copyright (c) 2026 Michael Denyer` line beside Lauren Tan's, so the port's modifications and additions have a named holder under the same MIT terms. `NOTICE.md`, `NOTICE-skills.md`, and both READMEs name the holder, and the skills-only copies under `poteto-mode/references/licenses/` carry the new line.
+
+## 0.9.52 - name a missing transcripts directory in the audit warning
+
+`worktree-audit.mjs` warns `<dir> not found; LAST_CHAT column will be empty` when the transcripts directory is missing, and keeps the `transcript scan failed` warning for a directory it cannot read. The sync test for a fork that upstream absorbs now runs each dry-run and declaration combination as its own named case.
+
+## 0.9.51 - preserve audit results, skill descriptions, and sync ownership
+
+`worktree-audit.mjs` now catches errors when checking the transcript directory itself. An inaccessible parent directory leaves transcript usage unknown, prints a warning, and keeps otherwise safe worktrees at `review` instead of aborting the table.
+
+The upstream frontmatter normalizer removes every paragraph of a Cursor-only field, including paragraphs separated by empty lines. A multiline `reminder` can no longer append its remaining text to the preceding skill description.
+
+The sync reports a clean merge as `updated` when its final bytes and mode match new upstream. A fork declaration then becomes stale in the same run, and removing it no longer blocks the update. A remaining port mode change still requires its declaration.
+
+## 0.9.50 - the review's open items and the sync's symlink and binary seams
+
+This release closes the items that the code-quality review and its reviewers left open, and it fixes four sync seams that predate the review. The sync no longer writes through a port symlink at or above an upstream path, no longer hands a binary port copy to `git merge-file`, keeps a port file whose only edit is its mode when upstream deletes it, and counts a fork's changed lines from the bytes it compared. Five changes are visible to a user or maintainer. The sync reports the port symlink cases as `symlink` conflicts and a binary port copy under an upstream text edit as a binary conflict (#138). Fourteen Codex prompt stubs drop a sentence that repeated their skill's Codex preamble (#139). `watch-pr` prints shorter status-query detail text when an open PR has no head or base commit (#140). `CHANGES.md` no longer carries the `## Codex port` section (#136). The forked count at upstream pin 12d587d falls from 45 to 44 (#137).
+
+The `## Codex port` section at the end of `CHANGES.md` was a design note, not a release entry, and most of its claims had gone stale, so this release deletes it. Its one current rationale with no other home moves to the Build entry in `CONTEXT.md`. Skills keep upstream's Claude-native wording, and the Codex build resolves tool names through `codex-tools.md`, because a tool-neutral rewrite would fork every upstream skill. The section's reminder to recheck the skill names in `hooks/session-start-context.md` after a rename is now a test, which fails on any `pstack:<name>` or `` `/<name>` `` in the hook context that names no skill. The one link to the section, in `NOTICE.md`, points to `docs/reference.md#codex`. The README's Data handling section lists `watch-pr/live-merge-safety.mjs`, which runs only when started by hand with `--live-disposable` and creates and deletes a private repository on the caller's `gh` account. (#136)
+
+Upstream's `how/SKILL.md` says "Spawn one Task subagent", and no rule or denylist entry caught the phrase, so the port shipped it. `tools/substitutions.json` gains a `Task subagent` rule, and `how` now says to spawn one `` `Agent` `` subagent. A paired denylist regex fails a sync that would write back an unbackticked `Task subagent`, `Task tool`, `Task schema`, or `` Task `model` ``, phrases upstream uses in files the port forks. `databricks.md` takes upstream's deletion of a sentence that pointed at a `databricks-use-dbt-models` skill neither tree carries, so it leaves the forked list and `tools/forks.json`, and the forked count at pin 12d587d falls from 45 to 44. Four Per-skill notes rows in `codex-tools.md` now match their skills. The `arena` row substitutes Codex models for the runners and the cross-judge pool. The `reflect` row points at the session digest that step 1 allows when the transcript finder exits 1. The `swarm` row names a worktree or output directory and the `swarm workers` model. The `why` row names model substitution and marks its `.mcp.json` and `claude mcp list` fallbacks as Claude Code's. (#137)
+
+`tools/sync.mjs` reads a port symlink as a link, the way it reads an upstream one. `portCopy` used `existsSync` and `statSync`, which follow links, so a real run could write upstream's text through a dangling port link and create its target, or merge into a live link's target. A port link at an upstream path is now a `symlink` conflict. A port link at a directory that holds upstream paths is a `symlink` conflict at the link, and the sync reads and writes nothing under it. Before, a real run updated files in the link's target outside the port tree, or threw `EEXIST` after earlier writes had landed. A port link at a port-only path stays port-only. A binary port copy under an upstream text edit fails the run as a binary conflict that names the file, where `git merge-file` used to abort the run with a temp path. A port copy that is not valid UTF-8 now fails the same way. When upstream deletes a file whose port copy changed only its mode, the sync keeps the file as `removed-upstream` instead of deleting it. A fork's changed-line count comes from the bytes `classify` compared, not a second read of the disk, which for a link had diffed the link's path text. `CONTRIBUTING.md` and the `sync.mjs` header describe each case, and both component dry runs print the same report as before. (#138)
+
+The `plan()` producers in `tools/generate.mjs` read each path through one accessor, so two producers that stamp one file compose. A whole-file write throws `<path> is planned twice with different text` when another producer already planned different text for that path, where the later producer used to win silently. `main()` loads `models.json` once and passes it to `plan` and `problems`. Three locals that shadowed exported functions are renamed, and the header comment lists the current sources of truth and no longer names `poteto-agent.md`. The Codex prompt stubs of the 14 skills that carry a stamped Codex preamble drop their `codex-tools.md` sentence, because the preamble under the skill's first heading says the same thing, and a Codex user who ran `/how` read the instruction twice. The other 17 stubs keep it, and every other generated file is byte-identical. (#139)
+
+In `watch-pr`, `landing.ts` holds the port's one set of shape validators, and they throw a retryable `missing-key` `WatcherQueryError` themselves. `github.ts` calls `parseLandingRevision` directly and drops the wrapper that caught a plain `Error` and rethrew it, which takes 13 lines off that fork. `shipping.ts` uses `oneOf`, `nullableText`, and `flag` from `landing.ts` in place of its own copies, and every `ship-pr` message is unchanged. One `watch-pr` output changes. When an open PR has no head or base commit, the status-query failure's `detail` reads `headRefOid must be a non-empty string` in place of `invalid landing revision: "headRefOid must be a non-empty string"`, and the failure drops a `rawValue` that repeated the message. The kind, retryability, verdict, and exit code 7 are unchanged. A ladder test pins blocker priority. `classifyPr` must report each blocker kind over every lower one, and the stack decider must report it before any lower tier in an earlier PR. `policy.ts` is unchanged. `--timeout` threading also stays as it is, because a deadline built in `main` for a supplied runtime would bound the poll loop but not the reader's subprocess kills. (#140)
+
+## 0.9.49 - a planning generator, a fork-burden report, and translation as data
+
+This release carries the structural items from the code-quality review that 0.9.48 began. The generator plans every generated file once and then writes or checks the plan, so CI runs `bun tools/generate.mjs --check` and writes nothing. The sync classifies each path in one function, and its dry-run report shows the fork burden as each fork's changed lines and a list of every port-only file. The port's Cursor translation is data, held as substitution rules and denylist tokens in `tools/substitutions.json` and as lines the generator stamps, so the forked count at upstream pin 12d587d falls from 65 to 45. Every remaining fork is declared in `tools/forks.json`, and the sync fails on an undeclared one. Three changes are visible to users. `watch-pr` exits 7 instead of 5 at one deadline edge, a merged or conflicted sync write keeps a file mode the port set, and the skills-only install no longer carries a `poteto-agent` copy that no skill read.
+
+`CHANGES.md` ended in a 140-line substitution ledger that no tool read and that contradicted the rules the sync runs. It mapped Cursor models to full `claude-*` IDs that `models.json` no longer uses, listed `commands/*.md` stubs that CI rejects, and told a maintainer to re-add `commands/babysit.md`. The ledger is gone, and this file is the release log only. Each rule in `tools/substitutions.json` gives its reason in a `rationale` field, and `CONTRIBUTING.md`, `NOTICE.md`, and `docs/reference.md` point there. (#117)
+
+Upstream formats the `poteto-mode/scripts` TypeScript with Prettier, and the port had no formatter config, so hand formatting in forked files added trailing commas and rewraps that every sync had to merge beside the real changes. `.prettierrc.json` sets `trailingComma: "es5"`, which with Prettier 3.6.2 reproduces every upstream `watch-pr` file at 12d587d. One formatting-only pass covers six forked and nine port-only `watch-pr` files, and `.prettierignore` skips the files upstream does not format with Prettier, two forks that formatting would grow, and `*.mjs`. The vendored-tooling CI job runs `bunx prettier@3.6.2 --check .`. Across the 13 forked `.ts` files the diff against upstream falls from 973 to 786 lines, and sampled one-line upstream edits that conflict fall from 128 to 73. The pin is 3.6.2 because every release from 3.7.0 on rewraps upstream's `types.ts`. Runtime behavior, `package.json`, and `bun.lock` are unchanged, so installs do not reinstall. (#118)
+
+The sync dry run at the pin is the port's ownership map, and it printed bare paths, so a one-line fork and a 319-line fork looked the same and the files the port wrote itself did not appear. Each fork now prints with its changed lines against the derived upstream text, largest first, or `mode` for a fork that differs only in file mode, above a total. A `port-only` list follows, naming every local file that no component carries upstream at its pin, excluded paths aside. The two components nest, so each sync reads the other component's pin with `git ls-tree`, and an unreachable pin for one fails a sync of the other. `changedLines` throws git's stderr when `git diff` fails, so an unreadable file cannot count as zero changed lines. (#119)
+
+`tests/check-plan.test.mjs` sets a 30-second default timeout for its five tests that spawn `node check-plan.mjs`. A starved CI runner had killed the child at bun's 5-second default and failed the `Generated files current` job with no regression behind it. (#120)
+
+`tools/generate.mjs` plans every generated file once, then applies or checks the plan. `plan` returns the exact text of each generated file and the directories the generator owns, and it throws before any write when a source cannot be planned: `VERSION`, the `CHANGES.md` heading, `models.json`, skill frontmatter, the slash-command table, or a region anchor. `apply` writes only files whose text differs, so an unchanged file keeps its mtime, and it refuses a symlink anywhere below the repo root, a guard the manifests, region files, and prompt stubs lacked. `problems` runs the tree checks and returns every failure, not only the first. `bun tools/generate.mjs --check` writes nothing and exits 1 naming each path that would change, and the `Generated files current` CI job runs it in place of regenerating and diffing. Generated output is byte-identical. Three edges differ on purpose: a non-`.md` file in `.codex-plugin/prompts/` is an orphan and is removed, a plan failure writes nothing, and a tree-check failure reports after every output is written. (#121)
+
+The live merge-safety check for `ship-pr` moves from `tools/verify-merge-safety.mjs` to `poteto-mode/scripts/watch-pr/live-merge-safety.mjs`, beside the command it checks. It shared nothing with the generator or the sync, and nothing pointed at it. Its usage line names `bun`, which it spawns. `CONTRIBUTING.md` says what it creates and deletes on the caller's `gh` account and asks for a run before any release that changes `watch-pr/`. The script now ships in every install, because installs copy the whole `scripts/` tree, and it does nothing without `--live-disposable`. (#122)
+
+Five Cursor tokens that the forks translate by hand had neither a substitution rule nor a denylist entry, so a new upstream file that used one would sync clean and ship the Cursor wording. The denylist gains `create-skill`, the unbackticked `generalPurpose`, `agent-transcripts`, `environment: "cloud"`, and `is_background`, each with a hint that names the Claude Code form. None occurs under `plugins/pstack`, so nothing is flagged today, and a sync that writes one fails and names the file and line. (#123)
+
+`watch-pr` models its merge gate, landing revision, and deadline as types. The merge-gate hint in `render.ts` ends in a `satisfies never` check, so a new gate reason fails `tsc` until it has its own hint, where it used to print the changes-requested text. An open PR's facts carry their landing revision from `parsePullRequest`, which removes a second head-and-base check in `readSnapshot`, and the test fake builds PRs through the same parser. One required `WatchDeadline` bounds both the reader and the poll loop, and the loop condition is the only clock check. The exit code changes at the deadline edge. A read that fails past the deadline on its last allowed failure (`--max-query-errors`) reports `BLOCKER status-query` with exit 7 instead of `TIMEOUT` with exit 5, which is upstream's order. Any other read that fails past the deadline emits one `RETRY` line with `retryInSeconds: 0` before the same `TIMEOUT`, whose `sequence` is one higher. Across 67 CLI cases against a fake `gh`, the output is otherwise unchanged. (#124)
+
+The skills-only install no longer carries `poteto-mode/references/agents/poteto-agent.md`, and the generator removes the existing copy. No skill named that path, and `codex-tools.md` tells Codex to spawn an agent that reads `poteto-mode/SKILL.md` directly. The `comment-sicko` copy stays, because `codex-tools.md` tells Codex to read it by path. `NOTICE-skills.md` drops the `poteto-agent` definition to match, and a test fails when a portable agent copy is named by no skill. The comment on `effortAgents` now says the routing contract lives in `poteto-agent`'s description, which the five `poteto-agent-<level>` variants leave out so that none of them reads as a routing target for `/poteto-mode`. (#125)
+
+The Claude and Codex `plugin.json` files and the two marketplace catalogs repeat the plugin's name, author, homepage, repository, license, keywords, category, and source path. A test in `tests/generate.test.mjs` fails when one copy changes without the others, and when a field is missing from both. Versions are left to the generator's check, and the three `description` fields differ by design. (#126)
+
+`tools/sync.mjs` decides each path's outcome in one exported function, `classify`, which returns a tagged result such as `updated`, `forked`, `merged`, `conflicted`, `symlink`, or `deleted`. One loop fills the report, scans for denylist tokens, and applies writes from those outcomes, in place of eleven branches across two loops that each placed their own scan and write. The printed report is unchanged. One behavior changes. A merged or conflicted file keeps the port's file mode when upstream left the mode alone, so a script the port made executable stays executable when upstream edits its text. When both sides change the mode, upstream's mode wins. (#127)
+
+The generator declares the directories it owns in `OWNED_DIRS` (the Codex prompts, the effort agents, `poteto-mode/references/agents`, and `poteto-mode/references/licenses`). Deriving them from each portable copy's parent directory meant a new portable file directly under `references/` would claim that directory and delete the hand-written references beside it. `plan` refuses a portable copy outside the declared directories and a declared directory nested in another. `changes` keeps an owned-directory entry that a planned path runs through, so a nested generated file converges instead of alternating between written and removed. `--check` reports a symlink or non-file refusal alongside every other failure, and a malformed Codex manifest is one reported failure instead of an exception. `CONTRIBUTING.md` notes that `--check` reads the working tree, not the commit. (#128)
+
+The generator tests assert behavior instead of implementation. The locator tests check which lines each locator selects rather than its index tuple. The regions test stamps a marker model into every skill named in `models.json` and looks for it in the committed files. The effort-section test checks the facts a reader acts on rather than seven pinned sentences, and the linked-install test no longer pins headings in upstream-owned files. Tests that repeated what the plan comparison already proves are deleted, and `the working tree breaks no cross-file contract` asserts that `problems` finds nothing, in place of two narrower live-tree checks. (#129)
+
+The forks translated the same upstream phrase by hand in several files, and the translations disagreed. `create-skill` read two different ways, and Cursor's `/loop` became a `loop` command in one playbook and a `loop` skill in another. `tools/substitutions.json` gains 22 rules for the Cursor phrases that recur across upstream files, so each phrase has one port form. They cover `` `Task` ``, the `pstack-models.mdc` rule phrasings, model-default slugs in skill bodies, the transcript and plugin paths under `~/.cursor/`, `create-skill` in three forms, `/loop`, Cursor's built-in babysit skill, cloud agents per PR, `/goal`, and Bugbot triage. Seven shipped sentences move to the rule's form, and "the Task tool" reads "the `Agent` tool" everywhere. The sync parses the table at load and fails naming the rule's index on an unknown field, on a rule with both or neither of `pattern` and `regex`, on a missing `replacement` or `rationale`, and on a literal pattern placed below a shorter one it contains, which the shorter rule would consume first. A misspelled `patern` had compiled to `new RegExp(undefined)` and inserted its replacement between every character. Six files leave the forked list. (#130)
+
+Thirty-two more rules translate Cursor sentences that occur in one upstream file each. They include the transcripts sentence in `automate-me`, the Comment Sicko dispatch in `no-comments`, the model fallbacks in `arena`, `architect`, and `swarm`, five sentences in `worktree-cleanup.md`, the cloud-worker sentences in `swarm`, and the `deslop` lines. A sentence rule pins only its sentence, where a fork pins the whole file against every unrelated upstream edit. Where the upstream sentence carries a Cursor-only parameter or path, a paired denylist token (`cloud_base_branch`, `environment: "local"`, `mcps/`, `Application Support/Cursor`, `cloud-sleeper`) makes an upstream rewording fail the sync instead of passing through untranslated. A test runs every replacement through the whole table and fails when a later rule would rewrite it. No shipped file changes, and two more files leave the forked list. Hunks where the port also rewrote a sentence for policy stay in the forks, because a rule there would encode policy as translation. (#131)
+
+`tools/sync.mjs` reads each version of a path lazily, once, on first access, so `classify`'s early returns skip reads by construction. An upstream symlink over a local directory reports as a `symlink` conflict instead of throwing `EISDIR`, and the old upstream revision is derived only when the comparison needs it, so a malformed old `SKILL.md` cannot abort a sync whose outcome does not depend on it. Excluded and port-only paths are decided from the path listings and never read. `mergeFile` throws when git reports a conflict but prints no markers, where it would have written an empty file that the generator's marker check cannot catch. A per-path failure names its path, and the report loop throws on an outcome kind it has no entry for. The mode rule holds for conflicted writes too, and a file new on both sides has no common ancestor and takes upstream's mode. (#132)
+
+Nineteen files carried a hand-inserted line under their first heading, fourteen the Codex preamble and five the driver-skill line, and both upstream agents carried hand-edited frontmatter. With the rules in place, those lines were the whole fork for twelve files. The generator owns them. The Codex preamble goes on every skill with a row in the Per-skill notes table of `codex-tools.md`, the driver-skill line goes on the playbooks in `DRIVER_PLAYBOOKS`, and either line anywhere else fails the generator. `deriveSkill` stamps the same lines into derived upstream text and derives the port's frontmatter, setting `name` from the directory or file name and dropping Cursor's `mode`, `icon`, `color`, `reminder`, and `is_background` keys. It takes `models` as an argument, which the sync loads once. `codex-tools.md` gains notes rows for `architect`, `arena`, `how`, `reflect`, `swarm`, and `why`, which already carried the preamble with no row behind it. Twelve files leave the forked list, which ends at 45. They are 29 Markdown files and 16 scripts, each with a hunk no rule reproduces. (#133)
+
+The port keeps its policy forks and declares them. `tools/forks.json` has one entry per forked path, 45 under `pstack` and 1 under `cursor-team-kit`. Of the 46, 39 are of kind `policy` and 7 of kind `port-feature`. Each entry carries a `why`, the `since` version, and an `upstream` field that reads `not-proposed` or links an upstream pull request or issue. `tools/sync.mjs` validates the registry on load and throws naming the component and path on an unknown component, a path outside the component, an unknown or missing field, an unknown kind, a malformed `since`, or a bad `upstream`. A forked, mode-only, merged, or conflicted path with no entry fails the sync with exit 1 in both dry and real runs and names each path, and a real run then writes nothing and leaves the pin alone. A merged or conflicted path counts because it still carries port edits. A declared path that is no longer forked or no longer exists prints a warning to delete the entry, and the run still exits 0. The ownership report prints each fork's kind, or `undeclared`, between its changed-line count and its path. `README.md`, `CONTRIBUTING.md`, and `CONTEXT.md` say the port carries named policy forks declared in the registry, and `CONTRIBUTING.md` explains how to add and retire an entry. `NOTICE-skills.md` says the change log records each release and links the registry for the forked files. To give a fork back, land it upstream, sync, and delete its entry when the sync warns that the path is no longer forked. (#134)
+
+## 0.9.48 - parse at the boundary, marked sync conflicts, and store.ts in upstream's shape
+
+A code-quality review of the whole port found three themes: the fork burden was invisible to tooling, two vendored scripts had been rewritten as new code, and shortcuts at the generator and sync boundaries produced defects. This release closes the defects and the largest fork. The structural items follow in later releases.
+
+`watch-pr` reported a complete READY observation as TIMEOUT when its read finished at the deadline, and a `sleep` result returned at the deadline lost its `pending-checks` or `queued-stack` reason. `pollUntilTerminal` in `policy.ts` no longer checks expiry after a step. The terminal result returns first and the loop-top check is the only expiry check, which is upstream's order. Three regression tests in `integrity.test.ts` pin it. (#110)
+
+The generator parsed skill frontmatter with line regexes and trusted the shape of `models.json`. A folded `description: >-` read as the literal `>-`, a CRLF file had no name, and a typo'd tier resolved to `[undefined]` and was stamped into skills with exit 0. `parseFrontmatter` now reads the block with `Bun.YAML`, and `parseModels` checks every key, tier, role, effort, and Codex example before resolving, naming the offending value on failure. The shape checks that lived only in `tests/models.test.mjs` moved into the generator, and the tests now prove each rejection on a fixture. `deriveSkill` rewrites the `disable-model-invocation` flag only inside the frontmatter span. (#111)
+
+The SessionStart hook guessed its runtime from `PLUGIN_ROOT`, so a Claude Code session that inherited that variable read the Codex sheet. Each runtime's hooks file now passes its name: `hooks/hooks.json` runs `session-start.sh claude`, and the new `hooks/codex-hooks.json`, named by `.codex-plugin/plugin.json`, runs `session-start.sh codex`. Any other argument exits 2. The generator validates both hooks files. `setup-pstack` is the one home for the sheet path on every runtime and names the Codex directory `<codex-home>` the way 0.9.45 named `<config>`. Its step 7 had told Codex users to write the sheet under `~/.codex` even when `CODEX_HOME` moved it, the Codex twin of #102. `codex-tools.md` and `docs/reference.md` link to that table instead of repeating a path. Codex asks to trust the hook again after this update because its definition changed. (#112)
+
+`tools/sync.mjs` advanced the upstream pin past unresolved conflicts, so on the next run the conflicted file read as a fork and the upstream change was never offered again. A text conflict is now written into the tree with git's markers (`<<<<<<< local`, `=======`, `>>>>>>> upstream`) and the pin advances. `bun tools/generate.mjs` fails on any marker line under `plugins/pstack` and names the file and line, so CI cannot pass until the conflict is resolved. A three-way binary conflict cannot carry markers and fails the sync with the pin untouched. A port change to a file's mode alone stays forked instead of being reverted and reported as an update, and a file upstream deleted that the port had edited prints as `now port-only`. (#113)
+
+`orch/store.ts` had been split into four files and reformatted in 0.9.24, so a one-line upstream edit conflicted on 72% of its lines and the local file exported 16 of upstream's 33 names. An upstream `orch.ts` that imported a missing type would sync cleanly and then fail typecheck. `store.ts` is upstream's file again plus the port's four one-line guards: `atomicWrite` cleanup, a nested-paren `gt` status, dash-leading branch names, and single-line `status.md` cells. `orch.test.ts` is upstream's file plus one appended `port guards` block. `types.ts`, `frontier.ts`, and `status.ts` are deleted, and the `scheduleMutation` queue with them, since every `runStore` call site runs one operation per handle and the lock file guards between processes. The 0.9.24 note that the split preserved the public imports no longer applies. (#114)
+
+`worktree-audit.sh` needed `jq` and `rg` and mixed discovery with classification across 275 lines of shell. `worktree-audit.mjs` replaces it. Git and `gh` are called from a thin shell, every transcript under the projects directory is read once, and a `classify` function over eight facts decides each row, with a table test per combination and fixture tests for trunk resolution. On a real clone with seven worktrees the output was byte-identical to the shell script's. Only `.jsonl` transcripts are scanned, `gh` stderr no longer lands in the parsed JSON, a detached worktree prints `unknown` in the REMOTE column, and a `git worktree list` failure exits non-zero instead of printing an empty table. The script imports the transcript walker from `reflect/scripts/find-transcript.mjs`, so a skills-only install needs both `poteto-mode` and `reflect`. `jq` and `rg` are no longer prerequisites, and the 0.9.33 and earlier entries that name `worktree-audit.sh` describe the old script. (#116)
+
+## 0.9.47 - directory listing metadata and a plugin-root README
+
+The Claude plugin directory reads four listing URLs from `plugin.json` that the manifest did not carry: `documentationUrl`, `supportUrl`, `privacyPolicyUrl`, and `termsOfServiceUrl`. They now point at `docs/reference.md`, the issue tracker, the README's Data handling section, and the MIT license. Claude Code ignores the keys at load time, as it does `icon`.
+
+The directory shows the README in the plugin folder as the listing description, and `plugins/pstack/` had none; the repository README sat one level up with relative links that do not resolve from the plugin folder. `plugins/pstack/README.md` now describes the plugin, what it contains, and what it touches, with absolute links.
+
+The repository README's Data handling section names each part that reads or calls anything: the hook reads one sheet from the runtime's config directory, the PR scripts call `gh` with the user's own login and install one pinned dependency on first use, and the audit script and two playbooks read local transcripts. The directory's security scan compares disclosed behavior with the source, and the earlier one-sentence version disclosed none of it.
+
+## 0.9.46 - plugin directory submission holds
+
+The Claude plugin directory validator held the submission on two files it could not read statically. The SessionStart hook resolved its mandate file through `$(dirname "$0")`, which a static reader of `hooks.json` cannot follow; it now names `${CLAUDE_PLUGIN_ROOT}/hooks/session-start-context.md` literally and carries a `.sh` extension so CI's shellcheck job lints it too. `hooks.json` points at the renamed file. Both runtimes export `CLAUDE_PLUGIN_ROOT`, so the behavior is unchanged and `tests/session-hook.test.mjs` still runs the shipped command under each.
+
+The eval playbook listed the blinding keywords in backticks, and the validator read the backticked `eval` as a shell execute pattern and flagged the file as a download-and-run risk. The list is now plain words with the same meaning.
+
+Two holds need a note in the submission rather than a change. The plugin's PR-watching scripts call the user's own `gh` login to act on the user's own pull requests, which is the plugin's purpose, not an unrelated credential. The name `pstack` is upstream's name (`cursor/plugins/pstack`), and the installed `pstack:` namespace depends on it.
+
+## 0.9.45 - respect CLAUDE_CONFIG_DIR for the override sheet
+
+The Claude Code SessionStart hook read `$HOME/.claude/pstack-models.md` even when `CLAUDE_CONFIG_DIR` pointed Claude Code at another directory, so a `session hook: off` line in the active configuration had no effect. The skills named the same fixed path, so an agent that read the sheet directly fell back to the defaults. Reported in #102.
+
+The hook now reads `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/pstack-models.md`, the same fallback the Codex branch uses for `CODEX_HOME`. `setup-pstack` calls the directory `<config>` and writes the sheet and its `CLAUDE.md` include there.
+
+The shared skills no longer name a runtime's path. They are shared by Claude Code, Codex, opencode, and Gemini CLI, so `~/.claude/pstack-models.md` was wrong on three of them, and a shell expression would have needed a gated shell step before `Read`. The skills that use the sheet (`arena`, `architect`, `how`, `interrogate`, `poteto-mode`, `reflect`, `swarm`, `why`) now call it `pstack-models.md`. The stamped Models section in `tools/generate.mjs` says `/setup-pstack` lists its path per runtime, and the `tools/substitutions.json` rewrite for Cursor's `~/.cursor/rules/pstack-models.mdc` produces the same name. The path lives only in `setup-pstack`'s runtime table and the hook. The eight skills are forked from upstream, so a sync at the pinned SHA does not rewrite them, and this change edits them directly.
+
+This is a port-local change. The sheet name is the port's translation of Cursor's rule file, and the Claude Code hook exists only in this port.
+
+**Verified.** `tests/session-hook.test.mjs` gains a `claude with CLAUDE_CONFIG_DIR` runtime. Its `session hook: off` case fails on 0.9.44 and passes here.
+
+## 0.9.44 - reasoning effort per role through effort agents
+
+A role value in `~/.claude/pstack-models.md` may name a reasoning effort after its model, as in `arena runners: opus @xhigh, fable @max`. Each panel entry takes its own level. The Claude Code `Agent` call has no effort parameter, but a custom subagent's `effort` frontmatter overrides the session's effort while it runs. The generator therefore writes two agents per level in the new `models.json` `efforts` list: `effort-agents/effort-<level>.md`, a full-tool pstack subagent with its own one-line prompt, and `effort-agents/poteto-agent-<level>.md`, which carries poteto-agent's body. Neither sets `model`, so the caller still passes the role's model. Codex and the skills-only harnesses ignore the agents, and a sheet without `@` behaves as before. Contributed by @marcelormendes in #90.
+
+A role value without a level keeps the parent session's effort, because `defaultEffort` in `models.json` is `session`. The sheet's `default effort` line sets a level for every such role, as in `default effort: medium`. `setup-pstack` asks for the default and writes the line.
+
+Every skill that owns a role gets a stamped `## Reasoning effort` section, which `deriveSkill` appends on sync like the Models section. The section picks the agent from the `subagent_type` the caller would otherwise use. `pstack:poteto-agent` becomes `pstack:poteto-agent-<level>`, and `general-purpose` or no type becomes `pstack:effort-<level>`. That covers `arena` and `architect`, which name no type, whether they run alone or under poteto-mode. `inherit-parent @high` and `auto @high` still omit `model`. On Codex, the section and `codex-tools.md` pass the level as `spawn_agent`'s `reasoning_effort`, and `setup-pstack` pastes the `default effort` line into `AGENTS.md` with the model rows. `setup-pstack` asks for an optional level per role and validates it, and the override-sheet preamble documents the suffix.
+
+The generated agents live in `plugins/pstack/effort-agents/`, which the generator owns outright. It removes any other entry there and refuses to write through a symlink, so it never touches the hand-written agents in `agents/`, and a deleted directory regenerates. The `agents` list in `.claude-plugin/plugin.json` names every file in both directories, because a custom list replaces the default `agents/` directory. `claude plugin validate` accepts file paths there but not directories. The generator stamps the list, and a test fails when it misses a file.
+
+**Verified.** `bun test tests/` and `bun tools/generate.mjs` results are in the PR. Live effort per turn on Claude Code 2.1.280 was read from session transcripts in #90 for `swarm`, `interrogate`, and direct spawns. With the built-in default briefly set to `medium`, a `swarm` run on `opus` in a `--effort low` session dispatched `pstack:effort-medium`, and the worker's turns ran at `medium`. The same run on `haiku` dispatched `general-purpose`, so a configured default depends on the parent model following the stamped rule. `arena` and `architect` were not run live.
+
+## 0.9.43 - watch-pr stops at the review gate
+
+`watch-pr` reported READY with exit 0 for a PR that GitHub would not merge. Its readiness proof checked conflicts, review threads, CI, draft state, and `CHANGES_REQUESTED`, but not `REVIEW_REQUIRED`. `assessGitHubMerge` also accepts `mergeStateStatus: BLOCKED` when the head rollup is not failing, so a PR held only by a required approval passed every check. The Review column printed ✅ because it looked only at threads and review automation.
+
+Such a PR now ends in the terminal `merge-gate` blocker with exit 6, the path `CHANGES_REQUESTED` already takes. The reason is `review-required` when `reviewDecision` is `REVIEW_REQUIRED`, and `merge-blocked` when `mergeStateStatus` is `BLOCKED` for another branch protection rule, such as signed commits or a required check that never reported. Both reasons wait while checks are still pending, as `draft-pr` does. This applies in single, `--stack`, and `--queued-stack` mode. The watcher hands off at the gate instead of waiting on it, because the shipping playbook routes human approval gates to a wait of its own. `ReadyPr`'s `reviewDecision` type excludes `REVIEW_REQUIRED`. The status table shows 👀 review required and ⛔ blocked.
+
+This is a port-local edit to upstream's vendored `watch-pr`. It belongs upstream as well, and the next sync that touches `policy.ts` must keep it.
+
+**Verified.** `bun test orch watch-pr` gives 118 pass, 0 fail, including four `review gate` cases in `policy.test.ts`. `bun run typecheck` is clean. For a PR with `REVIEW_REQUIRED` and `BLOCKED`, the 0.9.42 policy classifies it as ready and this build reports the `review-required` blocker.
+
+## 0.9.42 - watcher check states and script edge cases
+
+`watch-pr` fails a check whose state is a completed conclusion that gh puts in its pending bucket, such as `STARTUP_FAILURE` or `STALE`. Before, the watcher waited on such a check until its timeout, and forever under the default `--timeout 0`. When `--pr` is omitted, it refuses to pair the checkout's PR number with a different `--owner` or `--repo`. It also refuses stack discovery when `gh pr list` returns a full page of 300 open PRs, because a full page may have cut the bottom of the stack.
+
+`worktree-audit.sh` searches transcripts with `rg --no-config -uu`, so an ignore file or a user rg config can no longer hide a live chat. A missing transcripts directory prints a warning and moves a worktree from `safe` to `review`. `check-plan.mjs` treats a fence indented inside a list item as a fence. `find-transcript.mjs` runs under node when it is invoked through a symlinked path. `log.sh` prefixes a cell that starts with `"`, which a quote-aware TSV reader would otherwise unwrap. This release forks `find-transcript.mjs` and `log.sh` from upstream.
+
+`tools/sync.mjs` gives a written file the upstream file's mode, detects binaries by content, and reports an upstream symlink as a conflict without following it. It rethrows git errors instead of counting them as conflict hunks. `tools/upstream.json` excludes the eleven `cursor-team-kit` skills the port does not carry.
+
+## 0.9.41 - model tiers and shape-based sync rules
+
+`plugins/pstack/models.json` names three tiers, `default`, `strongest`, and `panel`, and each role names the tier it runs on. The Codex mapping reads the same keys from the `codex` block, so it no longer infers the strongest roles from which single-model roles differ from the default. Under that inference, moving a role to `haiku` listed it as a strongest-model role. `available` is a plain list of the family names the `Agent` tool accepts. Stamped output is unchanged.
+
+The generator's stray-model scan builds its pattern from `available`. It still rejects a full `claude-*` ID and now also rejects a backticked family name such as `` `fable` `` outside a stamped region, which the old `claude-*` pattern let through. `poteto-mode`, `setup-pstack`, and `codex-tools.md` point at the Models sections instead of listing the names.
+
+`tools/substitutions.json` rules can match a `regex` and be limited to paths matching `files`. Two rules rewrite any vendor's ``(default `<slug>`)``, pointing playbooks at poteto-mode's Models section and a skill body at its own. The denylist catches any Cursor slug with an effort suffix, such as `gpt-6-sol-max`, in place of the `gpt-5.6-` prefix. A dry run at `12d587d` reports 64 forked and 59 unchanged files, the same as 0.9.40, with no denylist hits.
+
+`check-plan.mjs` accepts one lanes phrasing again, the one the port's plan skeleton writes.
+
+The `setup-pstack` step that rewrites full model IDs in an old override sheet comes out in 0.10.0.
+
+## 0.9.40 - name models the way the Agent tool accepts them
+
+The Claude Code `Agent` tool takes `opus`, `fable`, `sonnet`, or `haiku` as `model` and rejects full IDs such as `claude-opus-5-5`, checked against the tool schema on Claude Code 2.1.281. Every default in `models.json` was a full ID, so each subagent's first dispatch failed and the skills recovered through their rejection fallback. `models.json` now names the four family names, and the generator restamped the `## Models` sections, the interrogate reviewer table, and setup-pstack's override sheet and available-model line. `tests/models.test.mjs` fails if `available` names anything the tool does not accept.
+
+A family name runs that family's current model, so a role can no longer pick between Opus versions. `/setup-pstack` rewrites full IDs in an existing sheet to their family names and lists the rewrites. Until it is rerun, an old sheet still costs one rejected dispatch per subagent before the fallback.
+
+## 0.9.39 - sync to upstream 12d587d (v0.15.5)
+
+The upstream pin moves from `e8d856f` to `12d587d`, upstream v0.15.5. The range carries upstream's punctuation pass (semicolons, long dashes, and connector colons become periods or commas), operator-neutral pronouns, cuts of instructions that current models no longer need, code-ready rounds and multiple audit lanes in the autopilot and multi-phase playbooks, a patch-id noise rule in shipping, and role-line reads for the panel skills with an alias and rejection fallback. `how` and `why` name the override-sheet role line each spawn reads. Measured with `bun tools/sync.mjs pstack 12d587d`: 37 files written clean, 13 merged three-way, 22 unchanged, 35 excluded, 23 forked with upstream untouched, and 28 conflicted files resolved by hand.
+
+Port policy is unchanged where it diverges from upstream. The autopilots stop at merge-ready for the operator's click, `shipping` keeps the watcher-owned blocker classification, and `feature` keeps the per-delegate worktree. Model defaults stay in `models.json`, so upstream's move to Opus 5.5 and Grok 4.7 does not change any role. The reasoning-budget step upstream added to `setup-pstack` is not ported, because Claude Code model slugs carry no effort token.
+
+`tools/substitutions.json` rewrites ``(default `grok-4.7-xhigh-fast`)`` to the Models-section pointer, as it already did for the Fable default. Without it the clean sync wrote the Grok slug into `hillclimb.md` and `perf-issue.md`. The denylist now rejects `grok-`, `gpt-5.6-`, and `pstack-models.mdc`, so a Cursor model slug or rule path that no substitution covers fails the sync.
+
+## 0.9.38 - use GPT-6 models for Codex
+
+Codex model examples use GPT-6 Sol for single-model roles and GPT-6 Astra, Sol, and Luna for panels. The Codex panel configuration is named `panel` instead of `panelQuad` because it now has three models. Claude model defaults are unchanged.
 
 ## 0.9.37 - move the Opus roles to Opus 5.5
 
@@ -364,34 +927,6 @@ The multi-model panels (`arena` runners, `architect` runners, `interrogate` revi
 
 `plugin.json` no longer declares `dependencies: [{ "name": "plugin-dev", "marketplace": "claude-plugins-official" }]`, and `marketplace.json` drops the matching `allowCrossMarketplaceDependenciesOn`. The Claude Code desktop app passes every enabled plugin to the CLI as a session-only `--plugin-dir`, which strips marketplace identity (`pstack@inline`); a cross-marketplace dependency can never resolve in that mode, and the loader disables the entire plugin with `dependency-unsatisfied`. Result: pstack loaded in the CLI and the VS Code extension but silently vanished from desktop-app sessions. `optional: true` on a dependency entry passes `claude plugin validate` but is not honored by the loader (tested on 2.1.197). `plugin-dev` is now a documented manual install (README → Dependencies); skill bodies still route skill-authoring to `plugin-dev:skill-development` when it is present.
 
-## Codex port
-
-pstack also ships as a Codex plugin. The same generated `skills/` tree serves both runtimes, and both read the same skill prose. One mapping file handles the Claude-to-Codex translation, matching the structure the official `superpowers` plugin uses for Codex.
-
-pstack diverges from superpowers in one respect, and it is deliberate. superpowers writes its skill prose in tool-neutral language ("dispatch a subagent"), so no skill names a runtime tool and no per-skill note is needed. pstack instead keeps the upstream Claude-native prose intact, to stay in lockstep with upstream sync, and adds a one-line Platform note to each skill that names a Claude primitive. The note points at the mapping. Rewriting 44 upstream skills into neutral language would fork them from upstream and was rejected for that reason.
-
-**Added.**
-
-- `plugins/pstack/.codex-plugin/plugin.json` is the Codex plugin manifest (`skills: ./skills/`), with key-parity to the `superpowers` Codex manifest.
-- `.agents/plugins/marketplace.json` is the Codex marketplace manifest at the repo root, sourcing `./plugins/pstack` the way the Claude `.claude-plugin/marketplace.json` does.
-- `plugins/pstack/skills/poteto-mode/references/codex-tools.md` is the single Claude to Codex map. It covers tool actions (`Agent` becomes `spawn_agent` / `wait_agent` / `close_agent`, `AskUserQuestion` becomes plain text, the todolist becomes `update_plan`), the `multi_agent` config flag, subagent policy (Codex has no `poteto-agent` type, so dispatch a `spawn_agent` told to read `poteto-mode` first), model slugs (`claude-*` becomes your configured Codex models), the Claude built-ins pstack names (`run`, `verify`, `loop`, `plugin-dev:skill-development`), and the instructions file (`AGENTS.md`).
-
-**Platform notes (pointer-only edits).**
-
-- `skills/poteto-mode/SKILL.md` gained a "Platform Adaptation" section pointing at the mapping.
-- `skills/{architect,arena,automate-me,babysit,how,interrogate,reflect,why}/SKILL.md` each gained a one-line Platform note, since each names a Claude tool, a `claude-*` slug, or a Claude built-in. The pure-prose skills (the `principle-*` set, `tdd`, `figure-it-out`, and the cursor-team-kit imports) needed nothing.
-- `skills/setup-pstack/SKILL.md` gained a Codex branch. It writes `~/.codex/pstack-models.md` referenced from `~/.codex/AGENTS.md`, using Codex slugs instead of `claude-*`.
-
-**Commands.** The 24 `commands/*.md` files are Codex-compatible as written, no rewrite needed. Codex command discovery reads the `description` frontmatter and the filename and ignores the extra `name` key, and each body (`Invoke the <skill> skill and follow it`) is a valid Codex prompt. They surface as slash commands once the full plugin is installed in Codex. For the symlink-based install, drop the same files into `~/.codex/prompts/` for loose `/name` shortcuts alongside the symlinked skills.
-
-**Deliberately not ported.**
-
-- `agents/poteto-agent.md`. Codex has no `subagent_type`, so ad-hoc subagents are dispatched via `spawn_agent` told to read `poteto-mode` first. The mapping covers this.
-
-**Verified.** Codex discovers the skills and namespaces them under `pstack` (`pstack:poteto-mode` and so on) in a live session. Mapping resolution mid-task and `spawn_agent` fan-out follow the `superpowers` pattern and are worth confirming per session.
-
-**Maintenance.** The plugin version string now lives in three manifests: `plugins/pstack/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, and `plugins/pstack/.codex-plugin/plugin.json`. A version bump must update all three; `tests/skill-collision-repro.sh` checks they match. `.agents/plugins/marketplace.json` carries no version field. The default panel quad is enumerated only in the four panel skills (`arena`, `architect`, `how`, `interrogate`) and the `setup-pstack` sheet — keep those lines grep-identical when models change (`tests/skill-collision-repro.sh` checks they match, deriving the canonical quad from `setup-pstack`'s `arena runners` row and reading `interrogate`'s from its reviewer table); `poteto-mode` and its references deliberately do not enumerate it. After a sync that touches `skills/poteto-mode/scripts/`, run `bun install --frozen-lockfile`, `bun test orch watch-pr`, and `bun run typecheck` from that directory. `hooks/session-start-context.md` names the direct-entry skills by name only; re-verify the list when a skill is renamed. `plugins/pstack/commands/` must not exist (see 0.9.13); upstream ships trampolines there and a sync that restores them duplicates every slash-menu row, so move any new ones to `.codex-plugin/prompts/`. No skill may carry `disable-model-invocation` in its frontmatter (see 0.9.8) — on a skill it makes the Skill tool refuse the invocation, breaking the SessionStart mandate. The 21 command-less `principle-*` leaves instead carry `user-invocable: false` (see 0.9.9) to stay out of the `/` menu while `poteto-mode` reads them by path: `grep -L 'user-invocable: false' plugins/pstack/skills/principle-*/SKILL.md` must print nothing, and no leaf may also carry `disable-model-invocation` (the pair cancels to a dead skill). Re-run `tests/skill-collision-repro.sh` after Claude Code upgrades; its behavioral leg depends on undocumented slash resolution. The script checks the static invariants: the absent `commands/` directory, Codex prompts having matching skills, the skill and leaf flags, version parity across the three manifests, and the default model quad's identity across the four panel skills and `setup-pstack`.
-
 ## 0.9.2 - sync against upstream `e46364b`
 
 Upstream pstack jumped from `0.1.0` → `0.9.2` between syncs. 30+ commits, including 11 new files.
@@ -407,7 +942,7 @@ Upstream pstack jumped from `0.1.0` → `0.9.2` between syncs. 30+ commits, incl
 
 **Re-applied substitutions across changed + new content:**
 
-- Bulk pass through 28 files via Python regex covering all entries in the substitution table above.
+- Bulk pass through 28 files via Python regex covering every Cursor-to-Claude substitution rule of the time. The current rules are in `tools/substitutions.json`.
 - Targeted fixes for variants the bulk pass missed:
   - `recall/SKILL.md` line 15 — Cursor transcript path rewrite.
   - `why/SKILL.md` line 100 — MCP discovery wording variant.
@@ -429,143 +964,3 @@ Upstream pstack jumped from `0.1.0` → `0.9.2` between syncs. 30+ commits, incl
 **Team-kit imports:** unchanged. The upstream diff showed only `verify-this` (which we didn't import) changed in `cursor-team-kit/skills/`.
 
 **`babysit` skill:** unchanged. Locally authored; not affected by upstream sync.
-
----
-
-## Substitution table
-
-| Cursor primitive | Replaced with | Notes |
-| --- | --- | --- |
-| `Task` tool | `Agent` tool | Claude Code's `Agent` tool is the equivalent. |
-| `subagent_type: generalPurpose` | `subagent_type: "general-purpose"` | Kebab-case in Claude Code. |
-| `subagent_type: "poteto-agent"` | `subagent_type: "poteto-agent"` | Unchanged — this plugin ships that agent. |
-| `readonly: true` / `readonly: false` | (dropped; rewritten as "pick a subagent_type that retains MCP access") | Claude Code controls tool/MCP access via subagent_type, not a per-call readonly flag. |
-| `AskQuestion` | `AskUserQuestion` | Tool rename; semantics match. |
-| Cursor `/loop` (built-in) | Claude Code `loop` skill | 1:1 replacement; available as a built-in skill. |
-| Cursor `/babysit` (built-in) | This plugin's `babysit` skill | New Claude Code analog at `skills/babysit/` wrapping `gh` + `loop`. |
-| Cursor `/create-skill` (built-in) | `plugin-dev:skill-development` skill | Claude Code's authoring guidance for SKILL.md. |
-| `cursor-team-kit` `/deslop` | This plugin's `deslop` skill | Ported in (only team-kit skill imported). |
-| `cursor-team-kit` `control-cli` | `run` skill (Claude Code built-in) | Drives CLIs/TUIs. |
-| `cursor-team-kit` `control-ui` | The [driver policy](plugins/pstack/skills/poteto-mode/SKILL.md#non-negotiables) | Selects the app driver (0.9.29). |
-| `~/.cursor/projects/*/` transcripts | `~/.claude/projects/<encoded-cwd>/*.jsonl` | `<encoded-cwd>` is the workspace's working directory with `/` → `-`. |
-| Cursor `agent-transcripts/` dir | `~/.claude/projects/<encoded-cwd>/` | Same as above. |
-| `.cursor/skills/`, `~/.cursor/skills/`, `~/.cursor/plugins/` | `.claude/skills/`, `~/.claude/skills/`, `~/.claude/plugins/` | Path-only translation. |
-| Cursor `mcps/` directory | Tool list at top of system prompt (`mcp__<server>__<name>` prefixed entries), or `.mcp.json`, or `claude mcp list` | Discovery surface differs. |
-| Model: `composer-2.5-fast` | `claude-sonnet-4-6` | Fast workhorse Claude. |
-| Model: `claude-opus-4-X-thinking-xhigh` | `claude-opus-4-8` (with note "extended thinking" where it appeared in a table) | Claude Code uses model IDs without the Cursor UI suffix; extended thinking is a separate knob. Originally substituted to `4-7`, then bumped to `4-8` to match the current Claude family. |
-| Model: `gpt-5.3-codex-high-fast`, `gpt-5.5-high-fast` | `claude-sonnet-4-6`, `claude-haiku-4-5` | Within Claude Code, cross-vendor diversity isn't native. Skills that need a harsher pass now route to the bundled `thermo-nuclear-code-quality-review` skill (imported from cursor-team-kit) as the escape hatch. Different style of pressure (strict maintainability rubric), not vendor diversity. |
-
-## New / imported files
-
-- `skills/babysit/SKILL.md` — Claude Code analog of Cursor's `/babysit`. Wraps `gh pr view` / `gh pr checks` / `gh run view --log-failed` plus the `loop` skill for pacing. Provenance: independently authored; workflow informed by Cursor's public `/babysit` behavior. Not a copy of Cursor's closed-source implementation.
-- `commands/babysit.md` — slash command routing to the babysit skill.
-- `skills/thermo-nuclear-code-quality-review/SKILL.md` — imported verbatim from `cursor-team-kit`. Used as the harsher-critique escape hatch in `arena`, `interrogate`, `architect`, and `how` (replaces the Cursor-original cross-vendor bridge).
-- `commands/thermo-nuclear-code-quality-review.md` — slash command stub.
-- `skills/make-pr-easy-to-review/`, `skills/fix-ci/`, `skills/fix-merge-conflicts/`, `skills/get-pr-comments/`, `skills/what-did-i-get-done/` — five more skills imported verbatim from `cursor-team-kit`. Audited for Cursor-specific refs; none found, so no rewiring needed. They use only `gh` and `git` primitives.
-- `commands/make-pr-easy-to-review.md`, `commands/fix-ci.md`, `commands/fix-merge-conflicts.md`, `commands/get-pr-comments.md`, `commands/what-did-i-get-done.md` — slash command stubs.
-- `.claude-plugin/marketplace.json` — marketplace manifest so the repo is installable via `/plugin marketplace add michael-denyer/pstack-claude`. Declares `allowCrossMarketplaceDependenciesOn: ["claude-plugins-official"]` so the cross-marketplace dependency on `plugin-dev` resolves at install time.
-- `plugin.json` `dependencies` — declares `plugin-dev` (from `claude-plugins-official` marketplace) as a required dependency, since the rewiring routes skill-authoring tasks to `plugin-dev:skill-development`.
-
-## Per-skill changes applied
-
-### `skills/poteto-mode/SKILL.md`
-
-- Triggers section: `create-skill` → `plugin-dev:skill-development`; `deslop` "from `cursor-team-kit`" qualifier dropped; `control-cli`/`control-ui` line replaced with `run`/`verify` driver guidance; `Cursor's built-in **babysit**` → this plugin's `babysit`.
-- Subagents section: `Task` → `Agent`; `composer-2.5-fast` → `claude-sonnet-4-6`; `claude-opus-4-8-thinking-xhigh` → `claude-opus-4-8`; "agent mode (readonly strips MCP)" → "full tool access (do not pick a subagent_type that strips MCP)".
-
-### `skills/poteto-mode/references/plan.md`
-
-- `AskQuestion` → `AskUserQuestion`.
-- `generalPurpose` → `"general-purpose"`; built-in `plan` subagent_type → Claude Code's built-in `Plan` agent; both model slugs updated.
-- `create-skill` → `plugin-dev:skill-development`.
-- `control-ui` / `control-cli` lines replaced with `verify` / `run` driver skills.
-- "Cursor's built-in **babysit** skill" → "the **babysit** skill".
-
-### `skills/poteto-mode/playbooks/`
-
-- `authoring-a-skill.md`: `create-skill` → `plugin-dev:skill-development`.
-- `autonomous-run.md`: "Cursor's `/loop` command (a built-in, not a pstack skill)" → "Claude Code's `loop` skill (built-in)".
-- `bug-fix.md`, `feature.md`, `perf-issue.md`: `composer-2.5-fast` → `claude-sonnet-4-6`; "control skill" → "driver skill (`run` for CLIs/TUIs, `verify` for UIs)".
-- `eval.md`: `agent-transcripts/` + `~/.cursor/projects/*/` → `~/.claude/projects/<encoded-cwd>/*.jsonl`.
-- `opening-a-pr.md`: `Task` → `Agent`; "Cursor's built-in **babysit** skill" → "the **babysit** skill".
-- `prototype.md`, `runtime-forensics.md`, `visual-parity.md`: "control skill" → "driver skill" with `run`/`verify` explicit.
-
-### `skills/automate-me/SKILL.md`
-
-- Description and body: `create-skill` (6 places) → `plugin-dev:skill-development`.
-- `AskQuestion` (2 places) → `AskUserQuestion`.
-- `.cursor/skills/` / `~/.cursor/skills/` → `.claude/skills/` / `~/.claude/skills/`.
-- `agent-transcripts/` + `~/.cursor/projects/*/` → `~/.claude/projects/<encoded-cwd>/*.jsonl`.
-
-### `skills/reflect/SKILL.md` + `references/*.md`
-
-- Transcript paths → `~/.claude/projects/<encoded-cwd>/*.jsonl`.
-- `Task` → `Agent` (in SKILL.md and all three reviewer references).
-- `generalPurpose` → `"general-purpose"`; `readonly: false` + "agent mode" → "pick a subagent_type that retains MCP access".
-- Model slugs updated (`composer-2.5-fast` → `claude-sonnet-4-6`; `claude-opus-4-8-thinking-xhigh` → `claude-opus-4-8`).
-- `create-skill` (3 routing rules) → `plugin-dev:skill-development`.
-- Reference files: `.cursor/skills/`, `~/.cursor/skills/`, `~/.cursor/plugins/` → `.claude/...`, `~/.claude/...`.
-
-### `skills/why/SKILL.md`
-
-- MCP discovery: Cursor environment / `mcps/` directory → Claude Code tool list / `.mcp.json` / `claude mcp list`.
-- `generalPurpose` → `"general-purpose"`; readonly/agent-mode language → "pick a subagent_type that retains MCP access".
-- Model slugs updated.
-
-### `skills/how/SKILL.md`
-
-- `generalPurpose` → `"general-purpose"` (all 4 occurrences).
-- `composer-2.5-fast` → `claude-sonnet-4-6` (replace_all).
-- `claude-opus-4-8-thinking-xhigh` → `claude-opus-4-8` (replace_all for inline; table cell updated separately).
-- Critic model table: GPT slugs → Claude family; added note about bridging to `/gsd-review` for cross-vendor critique.
-- `readonly: true` lines dropped from subagent config blocks.
-
-### `skills/interrogate/SKILL.md`
-
-- `Task tool` → `Agent` tool.
-- Reviewer model table: `claude-opus-4-8-thinking-xhigh` / `gpt-5.3-codex-high-fast` / `gpt-5.5-high-fast` / `composer-2.5-fast` → Claude family variants.
-- `generalPurpose` → `"general-purpose"`; `readonly: true` dropped.
-- Added cross-vendor-bridge note (`/gsd-review`).
-
-### `skills/arena/SKILL.md`
-
-- Default 3 runners: GPT/composer slugs → Claude family. Added cross-vendor-bridge note.
-
-### `skills/architect/SKILL.md`
-
-- Phase B runner slugs: GPT/composer → Claude family. Added cross-vendor-bridge note.
-
-### `skills/show-me-your-work/SKILL.md`
-
-- Transcript audit path: `agent-transcripts/` + `~/.cursor/projects/*/` → `~/.claude/projects/<encoded-cwd>/*.jsonl`.
-
-## Deliberately not changed
-
-- **`claude-opus-4-8` model ID.** Already a valid Claude model; no edit needed beyond stripping the Cursor `-thinking-xhigh` UI suffix. Extended thinking is configured separately, not as a model variant.
-- **`/loop`, `/deslop`, `/babysit` slash references.** These all resolve in Claude Code now (`loop` is a built-in skill; `deslop` and `babysit` ship in this plugin).
-- **`run_in_background: true`.** Claude Code's `Agent` tool supports this — kept as-is.
-- **"currently open files, recent edits, the cursor location"** in `why/SKILL.md` (line 59). "Cursor location" here means editor cursor (caret position), not the IDE; generic phrasing, no edit.
-- **`poteto-agent` subagent ID.** Plugin ships this agent; references stay.
-- **Cursor's `/create-skill` writing style guidance referenced indirectly.** Pointed at `plugin-dev:skill-development` which covers the same ground in Claude Code. If you want stricter parity, also install Anthropic's `superpowers:writing-skills` skill.
-
-## Forking note
-
-This port now diverges from upstream pstack content. To track upstream:
-
-```bash
-# diff against the pinned commit
-diff -ru /tmp/pstack-src/pstack/skills/ skills/  # caveats: ignores the babysit/ and deslop/ dirs
-```
-
-If you want a clean re-port (e.g. when upstream releases v0.2.0), the rebuild recipe is:
-
-1. Copy upstream skills verbatim.
-2. Re-apply the substitution table above (most of it is mechanical find/replace).
-3. Re-add `skills/babysit/`, `commands/babysit.md`, and the cursor-team-kit `deslop` import.
-
-## Provenance
-
-- Upstream pstack: [cursor/plugins/pstack @ e46364b](https://github.com/cursor/plugins/tree/e46364b8be46000b7df0f260550cd712afbb8d36/pstack) — MIT, (c) 2026 Lauren Tan.
-- Upstream deslop: [cursor/plugins/cursor-team-kit/skills/deslop @ e46364b](https://github.com/cursor/plugins/tree/e46364b8be46000b7df0f260550cd712afbb8d36/cursor-team-kit/skills/deslop) — MIT, (c) 2026 Cursor.
-- babysit: independently authored; workflow informed by Cursor's public `/babysit` behavior — no code or prose copied.
-- Inspected for prior-art decisions: [v1truv1us/ai-eng-system](https://github.com/v1truv1us/ai-eng-system) (namespaces pstack under `pstack/` but keeps Cursor refs intact); [Evan-Kim2028/agent-fleet](https://github.com/Evan-Kim2028/agent-fleet) (vendors pstack under `base-kit/pstack/`, same posture).
