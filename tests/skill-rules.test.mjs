@@ -1,7 +1,8 @@
-// Port-local rules live in files that upstream syncs hand back for manual
-// merge (tools/sync.mjs reports them, never rewrites them). A rule dropped in
-// that merge reads as a clean sync, so each one is pinned here by the sentence
-// that carries it, with the issue or PR that earned it.
+// Port-local rules live in files the port has forked, which tools/sync.mjs
+// three-way merges: a clean merge is written, and a conflict is written with
+// markers for a human to resolve. A rule dropped in either reads as a clean
+// sync, so each one is pinned here by the sentence that carries it, with the
+// issue or PR that earned it.
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -31,6 +32,16 @@ const rules = [
     phrase: "or `.claude/skills/verify-*/` from an older generator",
   },
   {
+    source: "#71 formal skill must not take the driver name",
+    file: "create-formal-verification-skill/SKILL.md",
+    phrase: "never `verify` or a `verify-` prefix, which belong to the driver skill `/create-verification-skill` writes",
+  },
+  {
+    source: "#71 formal maintainer skips the driver skill",
+    file: "maintain-formal-verification-skill/SKILL.md",
+    phrase: "The project `verify` skill that `/create-verification-skill` writes drives the app and is not one.",
+  },
+  {
     source: "#72 task fallback keeps skipped steps",
     file: "poteto-mode/SKILL.md",
     phrase: "with the playbook steps verbatim and each `skip: <reason>` line",
@@ -41,6 +52,11 @@ const rules = [
     phrase: "an uncommitted `todo.md` Markdown checklist",
   },
   {
+    source: "#229 parallel sessions keep separate todolists",
+    file: "poteto-mode/SKILL.md",
+    phrase: "When several sessions share the checkout, name it `.audit/<task-slug>.todo.md`",
+  },
+  {
     source: "#58 stop before you re-delegate",
     file: "poteto-mode/SKILL.md",
     phrase: "Stop the abandoned agent first, and confirm it stopped.",
@@ -49,6 +65,11 @@ const rules = [
     source: "#58 delegate isolation",
     file: "poteto-mode/playbooks/feature.md",
     phrase: "Give every file-writing delegate its own worktree",
+  },
+  {
+    source: "#228 delegate worktree starts from the branch",
+    file: "poteto-mode/playbooks/feature.md",
+    phrase: "create its worktree with `git worktree add <path> -b <delegate-branch> HEAD`",
   },
   {
     source: "#59 item 1 drain the roster",
@@ -96,19 +117,54 @@ const rules = [
     phrase: "confirm that the PR or stack it reports matches the request",
   },
   {
+    source: "autopilot verify loop: only findings the diff causes go back",
+    file: "poteto-mode/playbooks/autopilot-full.md",
+    phrase: "A defect trunk shows without the PR is recorded against trunk and does not gate the PR",
+  },
+  {
+    source: "autopilot verify loop: bounded rounds",
+    file: "poteto-mode/playbooks/autopilot-full.md",
+    phrase: "Two fix-forwards per PR is the ceiling.",
+  },
+  {
+    source: "autopilot verify loop: size stated before fan-out",
+    file: "poteto-mode/playbooks/autopilot-full.md",
+    phrase: "A program of more than three owners waits for the operator's go on that size",
+  },
+  {
+    source: "#188 no self-review in place of an independent one",
+    file: "poteto-mode/SKILL.md",
+    phrase: "Never count your own review, passing tests, or CI as the independent verdict.",
+  },
+  {
+    source: "#188 a missing reviewer blocks the gate",
+    file: "poteto-mode/SKILL.md",
+    phrase: "Record `BLOCKED: independent review` in the todolist",
+  },
+  {
+    source: "#231 reflect digest carries no verdict",
+    file: "reflect/SKILL.md",
+    phrase: "It states no diagnosis, verdict, or cause.",
+  },
+  {
+    source: "#231 reflect adds nothing beside the transcript path",
+    file: "reflect/SKILL.md",
+    phrase: "Add nothing beside a transcript path",
+  },
+  {
     source: "pstack-orca run-role is the dispatch seam",
     file: "poteto-mode/SKILL.md",
     phrase: "Every role dispatch goes through the run-role skill.",
   },
   {
-    source: "pstack-orca poteto-agent helpers get run-role's effort agent",
+    source: "pstack-orca poteto-agent helpers go through run-role",
     file: "poteto-mode/SKILL.md",
     phrase: "On Claude Code, send every native subagent through it, `pstack:poteto-agent` helpers included",
   },
   {
-    source: "pstack-orca native effort comes from the effort agent",
+    source: "pstack-orca native effort is the Agent call's effort field",
     file: "run-role/SKILL.md",
-    phrase: "`subagent_type` set to `pstack:effort-<effort>` for the resolved effort",
+    phrase: "`effort` set to the resolved effort, and the `subagent_type` the calling skill prescribes",
   },
   {
     source: "pstack-orca Claude Code has no per-call readonly",

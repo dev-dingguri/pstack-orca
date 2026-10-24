@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { spawnSync } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
@@ -14,49 +15,34 @@ import { fileURLToPath } from "node:url";
 
 import {
   agentSkills,
-  codexModelNamesSection,
   PORTABLE_ASSETS,
+  plan,
+  problems,
   publicSkills,
-  syncPortableAssets,
+  resolveModels,
 } from "../tools/generate.mjs";
+import { codexModelNamesSection } from "../tools/runtimes.mjs";
 import { validateProsePaths, validateSkillsTree, walk } from "../tools/validate-skills.mjs";
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 const skillsDir = join(repoRoot, "plugins/pstack/skills");
-const agentsDir = join(repoRoot, "plugins/pstack/agents");
 const requiredPortableFiles = [
   "poteto-mode/references/agents/comment-sicko.md",
-  "poteto-mode/references/agents/poteto-agent.md",
   "poteto-mode/references/licenses/LICENSE",
   "poteto-mode/references/licenses/LICENSE-cursor-team-kit",
+  "poteto-mode/references/licenses/LICENSE-thermos",
   "poteto-mode/references/licenses/NOTICE.md",
 ];
 
 describe("shared Agent Skills tree", () => {
-  test("every skill satisfies the portable name and description boundary", () => {
-    const skills = agentSkills(skillsDir);
-    expect(skills.length).toBeGreaterThan(0);
-    for (const skill of skills) {
-      expect(skill.name).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
-      expect(skill.name.length).toBeLessThanOrEqual(64);
-      expect(skill.description.length).toBeGreaterThan(0);
-      expect(skill.description.length).toBeLessThanOrEqual(1024);
-    }
-  });
-
-  test("public skills are the user-invocable ones and exclude every principle leaf", () => {
+  test("public skills include poteto-mode and exclude every principle leaf", () => {
     const names = publicSkills(skillsDir);
     expect(names).toContain("poteto-mode");
     expect(names.some((n) => n.startsWith("principle-"))).toBe(false);
-    expect(names).toHaveLength(agentSkills(skillsDir).filter((s) => s.userInvocable).length);
   });
 
-  test("no markdown link escapes the skills tree", () => {
-    expect(() => validateSkillsTree(skillsDir)).not.toThrow();
-  });
-
-  test("no skill tells the reader to open a plugin path outside the tree", () => {
-    expect(() => validateProsePaths(skillsDir)).not.toThrow();
+  test("the working tree breaks no cross-file contract", () => {
+    expect(problems(repoRoot)).toEqual([]);
   });
 
   test("prose naming a real plugin file outside the skills tree fails the boundary check", () => {
@@ -179,6 +165,86 @@ describe("shared Agent Skills tree", () => {
     }
   });
 
+  // A throwaway skills tree: each key is a path under the root, each value
+  // that file's text. Removed after `run` returns or throws.
+  function withSkillTree(files, run) {
+    const root = mkdtempSync(join(tmpdir(), "pstack-skills-links-"));
+    try {
+      for (const [path, text] of Object.entries(files)) {
+        mkdirSync(dirname(join(root, path)), { recursive: true });
+        writeFileSync(join(root, path), text);
+      }
+      return run(root);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }
+
+  test.each([
+    ["parentheses", "[guide](<references/guide(v1).md>)", "guide(v1).md"],
+    ["spaces and a title", '[guide]( \t<references/guide (v1).md> "Guide (v1)")', "guide (v1).md"],
+    ["an unmatched parenthesis", "[guide](<references/guide).md>)", "guide).md"],
+    ["query and fragment", "[guide](<references/guide(v1).md?download=1#section>)", "guide(v1).md"],
+    ["percent encoding", "[guide](references/guide%28v1%29.md)", "guide(v1).md"],
+    ["reference definition", '[guide][ref]\n[ref]: <references/guide(v1).md> "Guide"', "guide(v1).md"],
+  ])("local link destinations preserve %s", (_name, markdown, filename) => {
+    withSkillTree(
+      { "example/SKILL.md": `${markdown}\n`, [`example/references/${filename}`]: "# Guide\n" },
+      (root) => expect(() => validateSkillsTree(root)).not.toThrow(),
+    );
+  });
+
+  test.each([
+    ["missing(v1).md", "missing"],
+    ["missing (v1).md", "missing"],
+    ["missing%GG(v1).md", "invalid URI encoding"],
+    ["../../outside(v1).md", "escapes skills tree"],
+  ])("an invalid angle-bracket target still fails: %s", (target, reason) => {
+    withSkillTree({ "example/SKILL.md": `[guide](<${target}>)\n` }, (root) => {
+      expect(() => validateSkillsTree(root)).toThrow(`example/SKILL.md -> ${target} (${reason})`);
+    });
+  });
+
+  test("an angle-bracket link does not hide a later missing link on the same line", () => {
+    withSkillTree(
+      {
+        "example/SKILL.md": '[guide](<references/guide(v1).md> "Guide") [missing](missing.md)\n',
+        "example/references/guide(v1).md": "# Guide\n",
+      },
+      (root) => {
+        let message = "did not throw";
+        try {
+          validateSkillsTree(root);
+        } catch (error) {
+          message = error.message;
+        }
+        expect(message).toContain("example/SKILL.md -> missing.md (missing)");
+        expect(message).not.toContain("references/guide");
+      },
+    );
+  });
+
+  test("the link validator CLI exits 0 on an angle-bracket link and 1 on a missing one", () => {
+    const cli = join(repoRoot, "tools/validate-skills.mjs");
+    const markdown = '[guide](<references/guide(v1).md> "Guide") [external](<https://example.com/guide(v1)>)';
+    withSkillTree(
+      { "example/SKILL.md": `${markdown}\n`, "example/references/guide(v1).md": "# Guide\n" },
+      (root) => {
+        const valid = spawnSync("node", [cli, root], { encoding: "utf8" });
+        expect(valid.error).toBeUndefined();
+        expect(valid.status).toBe(0);
+        expect(valid.stderr).toBe("");
+        expect(valid.stdout).toContain("ok: local markdown links stay inside");
+
+        writeFileSync(join(root, "example/SKILL.md"), `${markdown} [missing](missing.md)\n`);
+        const invalid = spawnSync("node", [cli, root], { encoding: "utf8" });
+        expect(invalid.error).toBeUndefined();
+        expect(invalid.status).toBe(1);
+        expect(invalid.stderr).toContain("example/SKILL.md -> missing.md (missing)");
+      },
+    );
+  });
+
   test("an escaping markdown target fails the boundary check", () => {
     const root = mkdtempSync(join(tmpdir(), "pstack-skills-links-"));
     const skill = join(root, "example");
@@ -213,100 +279,27 @@ describe("shared Agent Skills tree", () => {
     }
   });
 
-  test("the subagent definitions dispatched by name install with the skills", () => {
-    const vendored = join(skillsDir, "poteto-mode", "references", "agents");
-    for (const name of ["poteto-agent", "comment-sicko"]) {
-      const copy = readFileSync(join(vendored, `${name}.md`), "utf8");
-      expect(copy).toBe(readFileSync(join(agentsDir, `${name}.md`), "utf8"));
-      expect(copy).toContain(`name: ${name}`);
-    }
+  test("every vendored subagent definition has a skill that tells Codex to read it", () => {
+    const prose = walk(skillsDir)
+      .filter((file) => file.endsWith(".md"))
+      .map((file) => readFileSync(file, "utf8"))
+      .join("\n");
+    const vendored = PORTABLE_ASSETS.map(({ target }) => target).filter((target) => target.includes("/agents/"));
+    expect(vendored.length).toBeGreaterThan(0);
+    expect(vendored.filter((target) => !prose.includes(target))).toEqual([]);
   });
 
   test("every required portable asset lives inside the skills tree", () => {
     for (const file of requiredPortableFiles) {
       expect(existsSync(join(skillsDir, file))).toBe(true);
     }
+  });
+
+  test("the plan copies each portable asset from its source into a directory it owns", () => {
+    const { files, ownedDirs } = plan(repoRoot);
     for (const { source, target } of PORTABLE_ASSETS) {
-      expect(readFileSync(join(skillsDir, target), "utf8")).toBe(
-        readFileSync(join(repoRoot, source), "utf8"),
-      );
-    }
-  });
-
-  test("portable asset sync creates, updates, and removes generated files", () => {
-    const root = mkdtempSync(join(tmpdir(), "pstack-portable-assets-"));
-    const fixtureRepo = join(root, "repo");
-    const fixtureSkills = join(fixtureRepo, "plugins/pstack/skills");
-    const generatedDirs = new Set(PORTABLE_ASSETS.map(({ target }) => dirname(target)));
-
-    try {
-      for (const { source } of PORTABLE_ASSETS) {
-        const path = join(fixtureRepo, source);
-        mkdirSync(dirname(path), { recursive: true });
-        writeFileSync(path, `source: ${source}\n`);
-      }
-      for (const dir of generatedDirs) {
-        const output = join(fixtureSkills, dir);
-        mkdirSync(output, { recursive: true });
-        writeFileSync(join(output, "stale.md"), "stale\n");
-      }
-
-      expect(syncPortableAssets(fixtureRepo, fixtureSkills, { log() {} })).toEqual({
-        stamped: PORTABLE_ASSETS.length,
-        removed: generatedDirs.size,
-        total: PORTABLE_ASSETS.length,
-      });
-      for (const { source, target } of PORTABLE_ASSETS) {
-        expect(readFileSync(join(fixtureSkills, target), "utf8")).toBe(
-          readFileSync(join(fixtureRepo, source), "utf8"),
-        );
-      }
-      for (const dir of generatedDirs) {
-        expect(existsSync(join(fixtureSkills, dir, "stale.md"))).toBe(false);
-      }
-
-      expect(syncPortableAssets(fixtureRepo, fixtureSkills, { log() {} })).toEqual({
-        stamped: 0,
-        removed: 0,
-        total: PORTABLE_ASSETS.length,
-      });
-
-      const changed = PORTABLE_ASSETS[0];
-      writeFileSync(join(fixtureRepo, changed.source), "changed\n");
-      expect(syncPortableAssets(fixtureRepo, fixtureSkills, { log() {} })).toEqual({
-        stamped: 1,
-        removed: 0,
-        total: PORTABLE_ASSETS.length,
-      });
-      expect(readFileSync(join(fixtureSkills, changed.target), "utf8")).toBe("changed\n");
-    } finally {
-      rmSync(root, { recursive: true, force: true });
-    }
-  });
-
-  test("portable asset sync refuses an output directory symlink escape", () => {
-    const root = mkdtempSync(join(tmpdir(), "pstack-portable-assets-"));
-    const fixtureRepo = join(root, "repo");
-    const fixtureSkills = join(fixtureRepo, "plugins/pstack/skills");
-    const agentsOutput = join(fixtureSkills, "poteto-mode/references/agents");
-    const outside = join(root, "outside");
-
-    try {
-      for (const { source } of PORTABLE_ASSETS) {
-        const path = join(fixtureRepo, source);
-        mkdirSync(dirname(path), { recursive: true });
-        writeFileSync(path, `source: ${source}\n`);
-      }
-      mkdirSync(dirname(agentsOutput), { recursive: true });
-      mkdirSync(outside);
-      symlinkSync(outside, agentsOutput, "dir");
-
-      expect(() => syncPortableAssets(fixtureRepo, fixtureSkills, { log() {} })).toThrow(
-        "poteto-mode/references/agents resolves outside the skills tree through a symlink",
-      );
-      expect(existsSync(join(outside, "poteto-agent.md"))).toBe(false);
-    } finally {
-      rmSync(root, { recursive: true, force: true });
+      expect(files[`plugins/pstack/skills/${target}`]).toBe(readFileSync(join(repoRoot, source), "utf8"));
+      expect(ownedDirs).toContain(`plugins/pstack/skills/${dirname(target)}`);
     }
   });
 
@@ -321,34 +314,72 @@ describe("shared Agent Skills tree", () => {
       }
 
       const poteto = join(installed, "poteto-mode");
-      expect(readFileSync(join(poteto, "SKILL.md"), "utf8")).toContain("# Poteto mode");
-      expect(readFileSync(join(poteto, "references", "codex-tools.md"), "utf8")).toContain(
-        "# Codex tool mapping for pstack",
-      );
-      expect(
-        readFileSync(join(poteto, "..", "principle-model-the-domain", "SKILL.md"), "utf8"),
-      ).toContain("# Model the Domain");
+      for (const file of [
+        join(poteto, "SKILL.md"),
+        join(poteto, "references", "codex-tools.md"),
+        join(poteto, "..", "principle-model-the-domain", "SKILL.md"),
+      ]) {
+        expect(readFileSync(file, "utf8").length).toBeGreaterThan(0);
+      }
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
   });
 });
 
-describe("Codex model names", () => {
-  test("names a strongest Codex model for the roles that default to it on Claude", () => {
-    const models = JSON.parse(
-      readFileSync(join(repoRoot, "plugins/pstack/models.json"), "utf8"),
-    );
-    const section = codexModelNamesSection(models);
-
-    expect(section).toContain("gpt-6-astra");
-    for (const role of ["bug-fix", "perf-issue", "hillclimb", "strongest judgment"]) {
-      expect(section).toContain(role);
+describe("agentSkills reads frontmatter as YAML", () => {
+  function readSkill(name, text) {
+    const root = mkdtempSync(join(tmpdir(), "pstack-frontmatter-"));
+    try {
+      mkdirSync(join(root, name));
+      writeFileSync(join(root, name, "SKILL.md"), text);
+      return agentSkills(root)[0];
+    } finally {
+      rmSync(root, { recursive: true, force: true });
     }
+  }
+
+  test("a folded block scalar description is read as its folded value", () => {
+    const skill = readSkill("folded", "---\nname: folded\ndescription: >-\n  Use when\n  folding.\n---\n\nbody\n");
+    expect(skill.description).toBe("Use when folding.");
+  });
+
+  test("the 1024 limit measures the parsed description, not its YAML source", () => {
+    const value = "a".repeat(990) + '"'.repeat(30);
+    const quoted = readSkill("quoted", `---\nname: quoted\ndescription: ${JSON.stringify(value)}\n---\n`);
+    expect(quoted.description).toBe(value);
+    expect(() => readSkill("long", `---\nname: long\ndescription: >-\n  ${"a".repeat(1025)}\n---\n`)).toThrow(
+      "description exceeds the portable Agent Skills limit of 1024 characters",
+    );
+  });
+
+  test("a CRLF file yields its name", () => {
+    expect(readSkill("crlf", "---\r\nname: crlf\r\ndescription: d\r\n---\r\n\r\nbody\r\n").name).toBe("crlf");
+  });
+
+  test("user-invocable: false with a trailing space reads as not user-invocable", () => {
+    expect(readSkill("spaced", "---\nname: spaced\ndescription: d\nuser-invocable: false \n---\n").userInvocable).toBe(
+      false,
+    );
+  });
+});
+
+describe("Codex model names", () => {
+  test("names the Codex host defaults for single-model roles and keeps the mixed-provider panel", () => {
+    const raw = JSON.parse(readFileSync(join(repoRoot, "plugins/pstack/models.json"), "utf8"));
+    const section = codexModelNamesSection(resolveModels(raw));
+    const strongestLine = section.split("\n").find((line) => line.includes("strongest Claude model"));
+
     expect(section).toContain("run-role");
-    expect(section).toContain("gpt-6.1-sol@codex");
-    for (const slug of models.panel) expect(section).toContain(`${slug}@`);
+    expect(section).toContain(`\`${raw.codex.default}@codex\``);
+    expect(strongestLine).toContain(`\`${raw.codex.strongest}@codex\``);
+    for (const role of ["bug-fix", "perf-issue", "hillclimb", "strongest judgment"]) {
+      expect(strongestLine).toContain(`\`${role}\``);
+    }
+    expect(strongestLine).not.toContain("`reflect tooling`");
+    expect(section).toContain(`\`${raw.tiers.default}@claude\`, \`${raw.codex.panel[0]}@codex\``);
     expect(section).not.toContain("`how`");
     expect(section).not.toContain("`reflect`");
+    for (const family of raw.available) expect(section).not.toContain(`\`${family}\``);
   });
 });

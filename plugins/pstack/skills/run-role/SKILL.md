@@ -38,16 +38,18 @@ When inactive, do not add a poteto-mode activation instruction. This records the
 
 ### 1. Resolve the entries
 
-Read the role line from the runtime's override sheet (`~/.claude/pstack-models.md` on Claude Code, `~/.codex/pstack-models.md` on Codex). Without a line, use the default entries in the [Roles](#roles) table. For a `single` or `strongest` role, substitute the host provider's default only when that provider has a row in the Providers table. If no native provider is known or no row exists, keep the Roles table entries and route them through Orca as step 2 prescribes.
+Read the role line from the runtime's override sheet (`<config>/pstack-models.md` on Claude Code, `<codex-home>/pstack-models.md` on Codex, as the setup skill resolves them). Without a line, use the default entries in the [Roles](#roles) table. For a `single` or `strongest` role, substitute the host provider's default only when that provider has a row in the Providers table. If no native provider is known or no row exists, keep the Roles table entries and route them through Orca as step 2 prescribes.
 
 An explicit model or agent-count request for this invocation takes precedence over the sheet. Keep the role's mode unchanged. A `panel` role runs one agent per entry, so the panel length sets the count; more agents need an explicit request or a longer override list. A pool is the exception, see below.
 
-With no override, a `strongest` task selects the strongest-role default for each already-selected provider without adding agents. For a `panel` role this swaps every entry for its provider's strongest-role default. Use the effort from the table below for the task's tier, unless the user explicitly specifies an effort. A role override changes the model entries, not the default effort. Aliases inherit the actual parent model.
+With no override, a `strongest` task selects the strongest-role default for each already-selected provider without adding agents. For a `panel` role this swaps every entry for its provider's strongest-role default. Aliases inherit the actual parent model.
 
-Each entry is one of:
+Resolve each dispatch's effort in this order: an effort the user explicitly requests for this invocation, the entry's effort suffix, the sheet's `default effort` line, then the default for the task's tier from the table below. `session` sets no effort, so the dispatch keeps the runtime's setting. A role override changes the model entries, not the tier default.
 
-- `slug@provider`, a model and the provider that runs it natively.
-- A bare slug. Look its provider up in the setup skill's Models section. A bare slug listed nowhere has no provider; stop and ask the user which provider runs it (`AskUserQuestion` on Claude Code, a plain question on Codex), then continue.
+Each entry is one of the following, optionally followed by a space and an effort level (`opus@claude @xhigh`). Strip the level before reading the entry.
+
+- `model@provider`, a model and the provider that runs it natively. A Claude model is a family name, such as Opus or Fable, written in lowercase. An older sheet may name a full `claude-*` ID; run it as its family name and report the entry as unconfirmed.
+- A bare model. Look its provider up in the setup skill's Models section. A bare model listed nowhere has no provider; stop and ask the user which provider runs it (`AskUserQuestion` on Claude Code, a plain question on Codex), then continue.
 - `inherit-parent` or `auto`. The entry runs natively on the parent session's model; omit `model` on the call.
 
 A model family is a provider. Two entries are in different families only when their providers differ; another tier or effort of the same provider is the same family and counts as reduced diversity, which the result must say. Resolve an alias to the actual model before comparing providers. Where a skill says "different model family", it means this rule.
@@ -64,12 +66,12 @@ For a same-provider dispatch, use the native path below even inside an Orca-mana
 
 An explicit request for a terminal agent, supervised Orca worker, or full ownership handoff overrides the same-provider default. Follow orca-delegate for supervised workers and orca-cli for full handoffs. Mere mention of Orca, another worktree, or subagents is not that override.
 
-- Provider equals the host: native. On Claude Code, one `Agent` call with `run_in_background: true`, `model` set to the entry's family alias, and `subagent_type` set to `pstack:effort-<effort>` for the resolved effort (`pstack:effort-high`, `pstack:effort-xhigh`). The effort agent replaces a prescribed `general-purpose` or `pstack:poteto-agent`; the brief already carries the poteto-mode instruction. Keep any other prescribed type and disclose that its effort follows the session. On Codex, one `spawn_agent` with the entry's slug.
+- Provider equals the host: native. On Claude Code, one `Agent` call with `run_in_background: true`, `model` set to the entry's family name, `effort` set to the resolved effort, and the `subagent_type` the calling skill prescribes. On Codex, one `spawn_agent` with the entry's model.
 
-The `Agent` tool's `model` accepts only a family alias (`opus`, `fable`, `sonnet`, `haiku`) and rejects a full slug, so an Opus entry runs as `opus`. The alias selects the family's current model; report an entry that names an older version as unconfirmed. The `Agent` tool has no `readonly` parameter; drop a prescribed `readonly` and state step 3's `consult` limit in the brief instead.
-- Provider differs from the host: an Orca worker. Read the bundled [orca-delegate skill](../orca-delegate/SKILL.md) and its [file delivery reference](../orca-delegate/references/file-delivery.md), then follow them with the provider from the entry, the slug as the user-selected model, the mode from the [Roles](#roles) table, and the work location and result location from step 3. The contract carries the brief.
+The `Agent` tool's `model` accepts only a family name and rejects a full model ID. The family name selects that family's current model. The `Agent` tool has no `readonly` parameter; drop a prescribed `readonly` and state step 3's `consult` limit in the brief instead.
+- Provider differs from the host: an Orca worker. Read the bundled [orca-delegate skill](../orca-delegate/SKILL.md) and its [file delivery reference](../orca-delegate/references/file-delivery.md), then follow them with the provider from the entry, the model as the user-selected model, the mode from the [Roles](#roles) table, and the work location and result location from step 3. The contract carries the brief.
 
-Pass the resolved effort through the native tool's supported effort parameter (on Codex, `reasoning_effort`), the effort agent's `effort` frontmatter on Claude Code, or Orca's `--effort` together with `--model`. On Codex, use a fresh task with `fork_turns: "none"` when selecting model or effort explicitly, and provide the brief and required file paths. Do not invent native tool parameters or treat prompt wording as an effort setting. If the native tool cannot set effort, disclose that it inherits the runtime setting; do not switch transports solely to force it. For Orca, verify requested model and effort against the launch receipt. Report unsupported or unconfirmed settings without claiming they took effect; a rejected launch follows step 5.
+Pass the resolved effort through the native tool's effort parameter (`effort` on Claude Code's `Agent`, `reasoning_effort` on Codex's `spawn_agent`) or Orca's `--effort` together with `--model`. On Codex, use a fresh task with `fork_turns: "none"` when selecting model or effort explicitly, and provide the brief and required file paths. Do not invent native tool parameters or treat prompt wording as an effort setting. If the native tool cannot set effort, disclose that it inherits the runtime setting; do not switch transports solely to force it. For Orca, verify requested model and effort against the launch receipt. Report unsupported or unconfirmed settings without claiming they took effect; a rejected launch follows step 5.
 
 Never substitute a native model for a cross-provider entry on your own, and never start a probe worker. Only a real start decides availability.
 
@@ -111,28 +113,28 @@ Stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs
 
 | Role | Skill | Mode | Tier | Default entries |
 | --- | --- | --- | --- | --- |
-| feature, refactoring | poteto-mode | execute | single | `claude-opus-5-5@claude` |
-| bug-fix | poteto-mode | execute | strongest | `claude-fable-5-1@claude` |
-| perf-issue | poteto-mode | execute | strongest | `claude-fable-5-1@claude` |
-| hillclimb | poteto-mode | execute | strongest | `claude-fable-5-1@claude` |
-| judgment and prose | poteto-mode | consult | single | `claude-opus-5-5@claude` |
-| strongest judgment | poteto-mode | execute | strongest | `claude-fable-5-1@claude` |
-| how explorer | how | consult | single | `claude-opus-5-5@claude` |
-| how explainer | how | consult | single | `claude-opus-5-5@claude` |
-| why investigators | why | consult | single | `claude-opus-5-5@claude` |
-| why synthesizer | why | consult | single | `claude-opus-5-5@claude` |
-| reflect tooling | reflect | consult | single | `claude-opus-5-5@claude` |
-| reflect judgment, divergent, synthesizer | reflect | consult | single | `claude-opus-5-5@claude` |
-| arena runners | arena | execute | panel | `claude-opus-5-5@claude`, `gpt-6.1-sol@codex` |
-| arena cross-judge pool | arena | consult | panel | `claude-opus-5-5@claude`, `gpt-6.1-sol@codex` |
-| swarm workers | swarm | execute | single | `claude-opus-5-5@claude` |
-| architect runners | architect | consult | panel | `claude-opus-5-5@claude`, `gpt-6.1-sol@codex` |
-| interrogate reviewers | interrogate | consult | panel | `claude-opus-5-5@claude`, `gpt-6.1-sol@codex` |
-| trail reviewer pool | show-me-your-work | consult | panel | `claude-opus-5-5@claude`, `gpt-6.1-sol@codex` |
+| feature, refactoring | poteto-mode | execute | single | `opus@claude` |
+| bug-fix | poteto-mode | execute | strongest | `fable@claude` |
+| perf-issue | poteto-mode | execute | strongest | `fable@claude` |
+| hillclimb | poteto-mode | execute | strongest | `fable@claude` |
+| judgment and prose | poteto-mode | consult | single | `opus@claude` |
+| strongest judgment | poteto-mode | execute | strongest | `fable@claude` |
+| how explorer | how | consult | single | `opus@claude` |
+| how explainer | how | consult | single | `opus@claude` |
+| why investigators | why | consult | single | `opus@claude` |
+| why synthesizer | why | consult | single | `opus@claude` |
+| reflect tooling | reflect | consult | single | `opus@claude` |
+| reflect judgment, divergent, synthesizer | reflect | consult | single | `opus@claude` |
+| arena runners | arena | execute | panel | `opus@claude`, `gpt-6.1-sol@codex` |
+| arena cross-judge pool | arena | consult | panel | `opus@claude`, `gpt-6.1-sol@codex` |
+| swarm workers | swarm | execute | single | `opus@claude` |
+| architect runners | architect | consult | panel | `opus@claude`, `gpt-6.1-sol@codex` |
+| interrogate reviewers | interrogate | consult | panel | `opus@claude`, `gpt-6.1-sol@codex` |
+| trail reviewer pool | show-me-your-work | consult | panel | `opus@claude`, `gpt-6.1-sol@codex` |
 
 ### Providers
 
 | Provider | Native host | Single-role default | Strongest-role default |
 | --- | --- | --- | --- |
-| `claude` | Claude Code | `claude-opus-5-5@claude` | `claude-fable-5-1@claude` |
+| `claude` | Claude Code | `opus@claude` | `fable@claude` |
 | `codex` | Codex | `gpt-6.1-sol@codex` | `gpt-6-astra@codex` |

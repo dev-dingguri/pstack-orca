@@ -1,0 +1,9 @@
+{
+  "name": "pstack",
+  "private": true,
+  "description": "Development tooling for the pstack-orca repository: the generator, the sync tool, and the tests.",
+  "license": "MIT",
+  "peerDependencies": {
+    "typebox": "*"
+  }
+}

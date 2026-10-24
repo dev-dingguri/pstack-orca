@@ -9,60 +9,58 @@ On Codex, read the [platform mapping](../poteto-mode/references/codex-tools.md),
 
 Mine the current conversation for durable learnings, then route them into skill edits.
 
-## When to invoke
-
 Invoke when the user says "reflect" or "/reflect". Skip when the conversation is trivial, off-topic, or already covered by an existing skill the parent followed correctly. One-offs are not learnings.
 
-## Process
+## 1. Locate the active transcript
 
-### 1. Locate the active transcript
+Before fanning out, find this conversation's transcript in Claude Code's per-project transcripts directory at `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects/<encoded-cwd>/`. Do not glob across `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects/`. That crosses workspace boundaries and reads private chats from unrelated projects.
 
-The parent finds its own transcript file before fanning out. The system prompt names Claude Code's per-project transcripts directory at `~/.claude/projects/<encoded-cwd>/`; use that path. Do not glob across `~/.claude/projects/`. That crosses workspace boundaries and reads private chats from unrelated projects.
-
-Run the finder at `skills/reflect/scripts/find-transcript.mjs` under the installed plugin with the projects directory and a fragment of the conversation's opening user prompt:
+Run the finder at `skills/reflect/scripts/find-transcript.mjs` under the installed plugin with the projects directory and a fragment of the conversation's opening user prompt. `claude-project-dir.mjs` beside it prints this session's projects directory, wherever the shell has moved since:
 
 ```bash
-node <plugin>/skills/reflect/scripts/find-transcript.mjs ~/.claude/projects/<encoded-cwd> "<opening prompt fragment>"
+dir=$(node <plugin>/skills/reflect/scripts/claude-project-dir.mjs) && node <plugin>/skills/reflect/scripts/find-transcript.mjs "$dir" "<opening prompt fragment>"
 ```
 
-It covers the three layouts (flat `<id>.jsonl`, nested `<id>/<id>.jsonl`, subagent `<parent>/subagents/<child>.jsonl`), newest first, and prints the first path whose opening `user` record carries the fragment. Do not reimplement the scan by hand: the first line of a transcript is session metadata, not a message, and files run to several megabytes, so the finder streams each candidate and stops at its first `user` record. If it exits 1, write a tight digest of the session and pass that instead.
+It covers the three layouts (flat `<id>.jsonl`, nested `<id>/<id>.jsonl`, subagent `<parent>/subagents/<child>.jsonl`), newest first, and prints the first path whose opening typed prompt carries the fragment. Do not reimplement the scan by hand: the first line of a transcript is session metadata, not a message, a session that starts with `/clear` or a `!` shell command records that command's wrapper and output as `user` records before the prompt, and files run to several megabytes, so the finder streams each candidate and stops at its first typed `user` record. If the line exits 1, write a tight digest of the session and pass that instead. It lists, one line each in turn order, the user's prompts and corrections, the tool calls and their results, and the files touched. It states no diagnosis, verdict, or cause. The reviewers judge the session, not your conclusions about it.
 
-### 2. Spawn three reviewers in parallel
+## 2. Spawn three reviewers in parallel
 
-One message, three dispatches through the **run-role** skill (roles `reflect judgment, divergent, synthesizer` and `reflect tooling`); a native dispatch is an `Agent` call whose `subagent_type` and `model` run-role sets, and a cross-provider dispatch is an Orca worker whose contract permits the result file. Reviewers need MCP access for context lookups (tickets, chat threads, observability traces referenced in the transcript); pick a subagent_type that retains MCP access. The prompt forbids file writes; the parent applies edits.
+One message, three dispatches through the **run-role** skill (roles `reflect judgment, divergent, synthesizer` and `reflect tooling`); a native dispatch is an `Agent` call with `subagent_type: "general-purpose"` and the model and effort run-role sets, and a cross-provider dispatch is an Orca worker whose contract permits the result file. Reviewers need MCP access to look up the tickets, chat threads, and observability traces the transcript references, so pick a subagent_type that retains MCP access. The prompt forbids file writes. The parent applies edits.
 
-| Lens | `model` | Prompt template |
+Each reviewer and the synthesizer name a role line in `pstack-models.md` and a default in [Models](#models). run-role resolves each line to its entries, model, and effort.
+
+| Lens | Role line | Prompt template |
 |---|---|---|
-| Judgment | your configured reflect-judgment model (default in [Models](#models)) | `references/judgment-reviewer.md` |
-| Tooling | your configured reflect-tooling model (default in [Models](#models)) | `references/tooling-reviewer.md` |
-| Divergent | your configured reflect-judgment model (default in [Models](#models)) | `references/divergent-reviewer.md` |
+| Judgment | `reflect judgment, divergent, synthesizer` | `references/judgment-reviewer.md` |
+| Tooling | `reflect tooling` | `references/tooling-reviewer.md` |
+| Divergent | `reflect judgment, divergent, synthesizer` | `references/divergent-reviewer.md` |
 
-Pass each template verbatim, substituting the transcript path or digest where marked. Reviewers return findings in the `Agent` response body.
+Pass each template verbatim, substituting the transcript path or digest where marked. Add nothing beside a transcript path, not even a focus note for a long transcript. Reviewers return findings in the `Agent` response body.
 
-### 3. Synthesize
+## 3. Synthesize
 
-One dispatch through the **run-role** skill with role `reflect judgment, divergent, synthesizer`; a native entry is an `Agent` call whose `subagent_type` and `model` run-role sets from your configured reflect-judgment model (default in [Models](#models)). Pick a subagent_type that retains MCP access — the synthesizer's quality check includes spot-verifying citations, which can require MCP access. Use `references/synthesizer.md` verbatim, with each reviewer's full output inlined where marked. The synthesizer returns a structured Accepted / Rejected / Backlog list.
+One dispatch through the **run-role** skill with role `reflect judgment, divergent, synthesizer` (default in [Models](#models)); a native entry is an `Agent` call with `subagent_type: "general-purpose"` and the model and effort run-role sets. It spot-verifies citations through MCP, so pick a subagent_type that retains MCP access. Pass `references/synthesizer.md` verbatim, with each reviewer's full output inlined where marked. It returns an Accepted / Rejected / Backlog list.
 
-### 4. Structural enforcement check
+## 4. Structural enforcement check
 
-Sanity-check the synthesizer's Accepted list. For any item that would be enforced more reliably by a lint rule, script, metadata flag, or runtime check, move it from Accepted to Backlog. See the **encode-lessons-in-structure** principle skill.
+Move any Accepted item that a lint rule, script, metadata flag, or runtime check would enforce more reliably to Backlog. See the **encode-lessons-in-structure** principle skill.
 
-### 5. Apply
+## 5. Apply
 
-Before applying any Accepted edit, present the synthesizer's full Accepted/Rejected/Backlog output to the user and wait for explicit approval. The user picks which subset to apply and may redirect routings. Skill changes affect every future agent in the org; do not auto-apply.
+Present the synthesizer's full Accepted / Rejected / Backlog output and wait for explicit approval before applying any Accepted edit. The user picks the subset and may redirect routings. Skill changes affect every future agent in the org. Do not auto-apply.
 
-Backlog items file to whatever devex / backlog tracker your team uses automatically. Only the Accepted list waits for approval.
+File each Backlog item to your team's devex or backlog tracker without waiting. Only the Accepted list waits for approval.
 
-For each approved Accepted item, follow the Routing field exactly:
+Follow each approved row's Routing exactly:
 
-- Trivial existing-skill edit (a one-line bullet, a tightened sentence, a stale fact corrected): parent does directly.
+- Trivial existing-skill edit (a one-line bullet, a tightened sentence, a stale fact corrected): the parent does it directly.
 - Substantive existing-skill edit (a new section, a new pattern table, more than ~10 lines): hand to the **plugin-dev:skill-development** skill and run its draft / test / iterate loop.
 - `tune description: <skill path>` (the skill exists but didn't trigger when it should have): hand to `plugin-dev:skill-development` and run its description-optimization loop.
 - `new skill via plugin-dev:skill-development: <kebab-name>`: hand creation to `plugin-dev:skill-development`. Do not invent the shape ad hoc.
 
-If your environment ships a SKILL.md validator, run it on every touched skill before declaring done. Skip this step if it doesn't.
+If your environment ships a SKILL.md validator, run it on every touched skill before declaring done.
 
-### 6. Summarize for the user
+## 6. Summarize for the user
 
 Short list, no preamble:
 
@@ -73,7 +71,11 @@ Short list, no preamble:
 
 ## Models
 
-Role defaults, stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). A matching role line in `~/.claude/pstack-models.md` overrides each at runtime; see `/setup-pstack`. Each entry is `slug@provider`; the **run-role** skill runs an entry natively when its provider is the host and as an Orca worker otherwise, in the mode shown.
+Role defaults, stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). A matching role line in the `pstack-models.md` override sheet overrides each at runtime; `/setup-pstack` writes it and lists its path per runtime. Each entry is `model@provider`; the **run-role** skill runs an entry natively when its provider is the host and as an Orca worker otherwise, in the mode shown.
 
-- reflect tooling: `claude-opus-5-5@claude` (consult)
-- reflect judgment, divergent, synthesizer: `claude-opus-5-5@claude` (consult)
+- reflect tooling: `opus@claude` (consult)
+- reflect judgment, divergent, synthesizer: `opus@claude` (consult)
+
+## Reasoning effort
+
+A role value in the override sheet may name a reasoning effort after its model, as in `opus@claude @xhigh`. Levels on Claude Code: `low`, `medium`, `high`, `xhigh`, `max`. Which ones apply depends on the model. A value with no effort suffix takes the sheet's `default effort` line, a level or `session`; with no such line, it takes the task tier's default effort from the **run-role** skill's Roles section. `session` sets no effort, so the dispatch is the usual one. Strip the effort suffix before reading the model, and leave the provider tag (`@claude`, `@codex`, written without a space) to run-role. `inherit-parent` or `auto` still omits `model` at every level. run-role passes the level as the dispatch's effort field and keeps the `subagent_type` the calling skill prescribes. That is `effort` on the Claude Code `Agent` call, `reasoning_effort` on Codex's `spawn_agent`, and `--effort` on an Orca worker.

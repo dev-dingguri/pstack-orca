@@ -14,8 +14,8 @@ const skillsDir = fileURLToPath(new URL("../plugins/pstack/skills", import.meta.
 const names = new Set(agentSkills(skillsDir).map((s) => s.name));
 const principles = new Set([...names].filter((n) => n.startsWith("principle-")));
 
-// Runtime built-ins and explanatory mentions of Cursor commands.
-const BUILT_IN_SLASH = new Set(["loop", "run", "verify", "command", "goal", "name", "compact", "clear", "hooks"]);
+// Runtime built-ins, the Pi extension's /pstack-agents, and explanatory mentions of Cursor commands.
+const BUILT_IN_SLASH = new Set(["pstack-agents", "loop", "run", "verify", "command", "goal", "name", "compact", "clear", "hooks", "fleet", "add-dir", "resume"]);
 
 function references(text) {
   const found = [];
@@ -41,9 +41,17 @@ describe("prose skill references", () => {
     expect(dangling).toEqual([]);
   });
 
+  // An index entry names its leaf as "(**principle-x**)", or the leaf is the
+  // entry's title in kebab case, hyphens kept and other punctuation dropped.
   test("poteto-mode's Principles index lists exactly the principle leaves", () => {
     const index = readFileSync(join(skillsDir, "poteto-mode/SKILL.md"), "utf8");
-    const listed = new Set([...index.matchAll(/\(\*\*(principle-[a-z0-9-]+)\*\*\)/g)].map((m) => m[1]));
+    const start = index.indexOf("\n## Principles\n");
+    const section = index.slice(start, index.indexOf("\n## ", start + 1));
+    const listed = new Set();
+    for (const m of section.matchAll(/^- \*\*(.+?)\.?\*\*(?: \(\*\*(principle-[a-z0-9-]+)\*\*\))?/gm)) {
+      const title = m[1].toLowerCase().replace(/[^a-z0-9 -]/g, "").replace(/ +/g, "-");
+      listed.add(m[2] ?? `principle-${title}`);
+    }
     expect([...listed].sort()).toEqual([...principles].sort());
   });
 });
