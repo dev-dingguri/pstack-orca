@@ -1,6 +1,6 @@
 # pstack-orca
 
-Lauren Tan's [pstack](https://github.com/cursor/plugins/tree/main/pstack) is an opinionated Cursor skill stack that improves agent outcomes. Michael Denyer's [pstack-claude](https://github.com/michael-denyer/pstack-claude) ports it to Claude Code, Codex, Pi, GitHub Copilot, Muse, and other agent harnesses. This fork adds what the port had to drop: a role can run on a model from another provider.
+Lauren Tan's [pstack](https://github.com/cursor/plugins/tree/main/pstack) is an opinionated Cursor skill stack that improves agent outcomes. Michael Denyer's [pstack-claude](https://github.com/michael-denyer/pstack-claude) ports it to Claude Code, Codex, Pi, GitHub Copilot, Muse, and other agent harnesses. This fork adds what the port had to drop: a role can run on a model from another provider. It ships Claude Code and Codex only and drops pstack-claude's Pi, GitHub Copilot, and Muse builds.
 
 Tell `poteto-mode` your goal and it will invoke the correct workflow for the task. It keeps your code concise, simple and verified. When a role's model belongs to another provider, the `run-role` skill launches it as a supervised [Orca](https://www.onorca.dev/) worker through the bundled `orca-delegate` skill; roles on the host provider stay native subagents.
 
@@ -33,51 +33,6 @@ codex plugin add pstack@pstack-orca
 
 </details>
 
-<details>
-<summary><strong>Pi</strong></summary>
-
-Run in your terminal:
-
-```shell
-pi install git:github.com/dev-dingguri/pstack-orca
-```
-
-The package loads the skills and the pstack Pi extension, which adds the subagent, question, and wake-up tools the skills use, plus `/loop` and the routing instruction. Invoke a skill with `/skill:<name>`.
-
-</details>
-
-<details>
-<summary><strong>GitHub Copilot</strong></summary>
-
-Run in your terminal:
-
-```shell
-copilot plugin marketplace add dev-dingguri/pstack-orca
-copilot plugin install pstack@pstack-orca
-```
-
-This installs pstack for the Copilot CLI and the GitHub Copilot app, which share `~/.copilot`. Start a new session afterwards. Copilot ships no default pstack models, so the first skill that needs one runs `setup-pstack` to pick from the models your account lists, and later sessions reuse that choice.
-
-The Copilot build is tested on Copilot CLI 1.0.87 through 1.0.92. On those versions the routing hook's context reaches the session alongside other plugins' session-start context. If a later version keeps only one plugin's context, `setup-pstack` offers a [standing instruction](plugins/pstack/skills/setup-pstack/copilot.md#wire-it-in) for `~/.copilot/copilot-instructions.md` instead. On 1.0.92, once the CLI caches its computer-use experiment assignment, `copilot -p` sessions list no plugin skills and a `skill` call returns "Skill not found". Interactive sessions, the hooks, and the agents are unaffected.
-
-</details>
-
-<details>
-<summary><strong>Muse</strong></summary>
-
-Run in your terminal:
-
-```shell
-git clone https://github.com/dev-dingguri/pstack-orca
-cd pstack-orca
-muse plugins install ./plugins/pstack
-muse plugins approve pstack
-```
-
-The first command installs the native Muse plugin bundle. The second approves its `SessionStart` hook and agent definitions, which Muse runs only after approval. Start a new session afterwards. Invoke a skill with `/<name>` (for example `/poteto-mode`), which Muse lists for each user-invocable skill.
-
-</details>
-
 <a id="other-harnesses"></a>
 <details>
 <summary><strong>Other harnesses</strong></summary>
@@ -100,7 +55,7 @@ To update, run `git pull` in the clone, then run the `for` loop again to link sk
 
 ### Configure
 
-pstack routes tasks to `poteto-mode` automatically. At session start, a hook injects an instruction that points the agent at it: the plugin's hook on Claude Code, Codex, GitHub Copilot, and Muse, and the pstack extension on Pi. Codex runs the hook only after you trust it through `/hooks`, and Muse only after `muse plugins approve pstack`. Other harnesses have no hook.
+pstack routes tasks to `poteto-mode` automatically. At session start, a hook injects an instruction that points the agent at it: the plugin's hook on Claude Code and Codex. Codex runs the hook only after you trust it through `/hooks`. Other harnesses have no hook.
 
 Run `setup-pstack` to turn automatic routing on or off, change model defaults, or set a reasoning effort per role (`arena runners: opus@claude @xhigh, gpt-6-astra@codex @high`). Every model entry is `model@provider`; the default panel mixes Claude and Codex models, and single-model roles stay on the host. Cross-provider entries need Orca installed; a start that fails is reported and waits for your decision. In Claude Code, use `/pstack:setup-pstack`.
 
@@ -116,7 +71,7 @@ For a bug, it reproduces the failure, uses `how` and `why` to investigate, deleg
 
 [Other playbooks](plugins/pstack/skills/poteto-mode/SKILL.md#playbooks) cover planning, features, refactoring, performance issues, investigations, prototypes, PR maintenance, shipping, and longer projects.
 
-![poteto-mode on Claude Code, Codex, and Pi turns a request into verified work. Choose a playbook, plan and delegate with architect, arena, or swarm, then review and verify with interrogate, tests, and measurements. Project playbooks customize the workflow, and setup-pstack configures the model and reasoning effort per role. Supporting skills include how, why, and unslop.](assets/pstack-overview.png)
+![poteto-mode on Claude Code and Codex turns a request into verified work. Choose a playbook, plan and delegate with architect, arena, or swarm, then review and verify with interrogate, tests, and measurements. Project playbooks customize the workflow, and setup-pstack configures the model and reasoning effort per role. Supporting skills include how, why, and unslop.](assets/pstack-overview.png)
 
 ## Details
 

@@ -1,52 +1,9 @@
 {
   "name": "pstack",
   "private": true,
-  "version": "0.15.0",
-  "description": "If you want to go fast, go deep first. pstack helps you write less, but higher quality code. rigorous agent workflows you can parallelize with confidence. Pi package of the Claude Code plugin; skills are shared, tool names resolve via skills/poteto-mode/references/pi-tools.md. Original pstack by Lauren Tan (poteto).",
-  "author": {
-    "name": "dev-dingguri",
-    "email": "dev.dingguri@gmail.com",
-    "url": "https://github.com/dev-dingguri"
-  },
-  "homepage": "https://github.com/dev-dingguri/pstack-orca",
-  "repository": "https://github.com/dev-dingguri/pstack-orca",
+  "description": "Development tooling for the pstack-orca repository: the generator, the sync tool, and the tests.",
   "license": "MIT",
-  "keywords": [
-    "pi-package",
-    "pstack",
-    "poteto-mode",
-    "workflow",
-    "principles",
-    "agent-style",
-    "subagents",
-    "unslop",
-    "claude-code",
-    "skills",
-    "tdd",
-    "code-review",
-    "parallel-agents",
-    "codex",
-    "opencode",
-    "gemini-cli",
-    "prime-agent",
-    "orca",
-    "multi-provider"
-  ],
-  "pi": {
-    "skills": [
-      "./plugins/pstack/skills"
-    ],
-    "extensions": [
-      "./plugins/pstack/pi/index.ts"
-    ]
-  },
   "peerDependencies": {
-    "@earendil-works/pi-coding-agent": "*",
     "typebox": "*"
-  },
-  "peerDependenciesMeta": {
-    "@earendil-works/pi-coding-agent": {
-      "optional": true
-    }
   }
 }

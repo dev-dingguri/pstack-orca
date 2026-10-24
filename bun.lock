@@ -5,12 +5,8 @@
     "": {
       "name": "pstack",
       "peerDependencies": {
-        "@earendil-works/pi-coding-agent": "*",
         "typebox": "*",
       },
-      "optionalPeers": [
-        "@earendil-works/pi-coding-agent",
-      ],
     },
   },
   "packages": {

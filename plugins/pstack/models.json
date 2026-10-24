@@ -38,34 +38,5 @@
     "strongest": "gpt-6-astra",
     "worker": "gpt-6-sol",
     "panel": ["gpt-6.1-sol"]
-  },
-  "pi": {
-    "fallback": "anthropic",
-    "models": {
-      "anthropic": {
-        "opus": "anthropic/claude-opus-5-5",
-        "fable": "anthropic/claude-fable-5-1",
-        "sonnet": "anthropic/claude-sonnet-5-5",
-        "haiku": "anthropic/claude-haiku-5-5"
-      },
-      "openai": {
-        "opus": "openai/gpt-6.1-sol",
-        "fable": "openai/gpt-6-astra",
-        "sonnet": "openai/gpt-6-sol",
-        "haiku": "openai/gpt-6-luna"
-      },
-      "openai-codex": {
-        "opus": "openai-codex/gpt-6.1-sol",
-        "fable": "openai-codex/gpt-6-astra",
-        "sonnet": "openai-codex/gpt-6-sol",
-        "haiku": "openai-codex/gpt-6-luna"
-      }
-    }
-  },
-  "muse": {
-    "default": "muse-wonder-1.0",
-    "strongest": "muse-wonder-full-1.0",
-    "worker": "muse-spark-1.3",
-    "panel": ["muse-wonder-full-1.0", "muse-wonder-1.0", "muse-spark-1.3"]
   }
 }

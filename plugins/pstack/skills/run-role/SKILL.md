@@ -7,8 +7,6 @@ description: "Dispatch one pstack role to its configured model entries: natively
 
 On Codex, read the [platform mapping](../poteto-mode/references/codex-tools.md), including its per-skill notes, before following this skill.
 
-On GitHub Copilot, read the [platform mapping](../poteto-mode/references/copilot-tools.md), including its per-skill notes, before following this skill.
-
 Every pstack skill that fans work out names a role (`arena runners`, `why investigators`, `swarm workers`). This skill turns a role into running agents. It is the one place that decides native subagent versus Orca worker. The calling skill owns the prompts, the review of results, and the authority the workers act under; this skill adds none.
 
 ## Inputs

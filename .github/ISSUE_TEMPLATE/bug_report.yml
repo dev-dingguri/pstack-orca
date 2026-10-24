@@ -32,8 +32,6 @@ body:
       options:
         - Claude Code
         - Codex
-        - Pi
-        - GitHub Copilot
     validations:
       required: true
   - type: input

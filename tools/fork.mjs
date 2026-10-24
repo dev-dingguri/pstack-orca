@@ -48,24 +48,30 @@ export function fanOutSkills(models) {
 export const providerSlugs = (models) =>
   models.providers.filter((p) => p.block).flatMap((p) => providerModels(models, p));
 
+// The renderers and run-role assume exactly these two hosts, with claude on the
+// top-level tiers, so a looser provider list would parse and then mis-render.
+const PROVIDER_IDS = ["claude", "codex"];
+
 export function checkFork(raw, fail) {
-  if (!Array.isArray(raw.providers) || raw.providers.length < 2) fail('"providers" must list at least two providers');
-  const ids = new Set();
+  const ids = Array.isArray(raw.providers) ? raw.providers.map((p) => p.id) : [];
+  if (ids.length !== PROVIDER_IDS.length || !PROVIDER_IDS.every((id) => ids.includes(id))) {
+    fail(`"providers" must list exactly ${PROVIDER_IDS.map((id) => `"${id}"`).join(" and ")}`);
+  }
   for (const p of raw.providers) {
-    if (ids.has(p.id)) fail(`provider "${p.id}" appears twice`);
-    ids.add(p.id);
     if (!p.label || !p.host) fail(`provider "${p.id}" needs a label and a host`);
-    if (!p.block) continue;
-    if (!Array.isArray(p.available) || !p.available.length) fail(`provider "${p.id}" needs an available list`);
-    const block = raw[p.block];
-    if (!block) fail(`provider "${p.id}" names block "${p.block}", which models.json lacks`);
-    for (const [tier, value] of Object.entries(block)) {
-      for (const slug of [value].flat()) {
-        if (!p.available.includes(slug)) fail(`${p.block} "${tier}" names "${slug}", which provider "${p.id}" does not list`);
+    if (p.id === "claude") {
+      if (p.block) fail('provider "claude" reads the top-level tiers and takes no block');
+    } else {
+      if (!p.block || !raw[p.block]) fail(`provider "${p.id}" needs a block that models.json defines`);
+      if (!Array.isArray(p.available) || !p.available.length) fail(`provider "${p.id}" needs an available list`);
+      for (const [tier, value] of Object.entries(raw[p.block])) {
+        for (const slug of [value].flat()) {
+          if (!p.available.includes(slug)) fail(`${p.block} "${tier}" names "${slug}", which provider "${p.id}" does not list`);
+        }
       }
     }
+    if (![providerTiers(raw, p).panel].flat().length) fail(`provider "${p.id}" has an empty panel tier`);
   }
-  if (!ids.has("claude")) fail('"providers" has no "claude" provider');
   for (const role of raw.roles) {
     if (!MODES.includes(role.mode)) fail(`role "${role.role}" needs a mode, one of ${MODES.join(", ")}`);
     if (typeof role.models !== "string") fail(`role "${role.role}" must name a tier so each host can resolve it`);
@@ -132,8 +138,7 @@ export function effortSection(levels) {
     "(`@claude`, `@codex`, written without a space) to run-role. `inherit-parent` or `auto` still omits `model` " +
     "at every level. run-role passes the level as the dispatch's effort field and keeps the `subagent_type` the " +
     "calling skill prescribes. That is `effort` on the Claude Code `Agent` call, `reasoning_effort` on Codex's " +
-    "`spawn_agent`, and `--effort` on an Orca worker. On Muse it is `effort` on a Workflow child; a `subagent_spawn` " +
-    "dispatch keeps the session's effort."
+    "`spawn_agent`, and `--effort` on an Orca worker."
   );
 }
 
@@ -171,7 +176,7 @@ export function overrideSheetBlock(models) {
     "the role's subagent then runs at that level, each entry of a panel list on its own. " +
     "A `default effort` line sets the level for a value without one, and `session` keeps the parent session's effort; " +
     `without that line, ordinary work runs at ${code(models.taskEffort.single)} and difficult work at ${code(models.taskEffort.strongest)}. ` +
-    "`session hook: off` stops the Claude Code, Codex, or Muse SessionStart hook, or the pstack Pi extension, from injecting the poteto-mode mandate; " +
+    "`session hook: off` stops the Claude Code or Codex SessionStart hook from injecting the poteto-mode mandate; " +
     "any other value, or no line, leaves it on.\n\n" +
     rows +
     "\n\nsession hook: on"

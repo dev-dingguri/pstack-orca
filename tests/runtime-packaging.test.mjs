@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateHooks } from "../tools/generate.mjs";
-import { validateCodexMarketplace, validateCopilotManifest, validateMuseManifest, validatePiPackage } from "../tools/runtimes.mjs";
+import { validateCodexMarketplace } from "../tools/runtimes.mjs";
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 
@@ -27,80 +27,12 @@ describe("validateCodexMarketplace", () => {
   });
 });
 
-describe("validateCopilotManifest", () => {
-  const claude = { name: "pstack" };
-  const ok = { name: "pstack", hooks: "hooks/copilot-hooks.json" };
-  test("needs the Claude Code name and a hooks file that exists", () => {
-    const pathExists = (rel) => rel === "plugins/pstack/hooks/copilot-hooks.json";
-    expect(() => validateCopilotManifest(ok, { claude, pathExists })).not.toThrow();
-    expect(() => validateCopilotManifest({ ...ok, name: "other" }, { claude, pathExists })).toThrow(
-      'name "other" != Claude Code manifest name "pstack"',
-    );
-    expect(() => validateCopilotManifest({ ...ok, hooks: "hooks/nope.json" }, { claude, pathExists })).toThrow(
-      'hooks "hooks/nope.json" is not a file in the plugin',
-    );
-    expect(() => validateCopilotManifest({ name: "pstack" }, { claude, pathExists })).toThrow("is not a file in the plugin");
-  });
-});
-
-describe("validateMuseManifest", () => {
-  const claude = { name: "pstack" };
-  const ok = {
-    name: "pstack",
-    schemaVersion: 1,
-    compat: { source: "native", manifestDir: ".muse-plugin" },
-    capabilities: {
-      skills: [{ id: "poteto-mode", path: "skills/poteto-mode/SKILL.md", enabledDefault: true }],
-      commands: [],
-      hooks: [{ id: "session-start", event: "SessionStart", command: ["sh", "hooks/session-start.sh", "muse"] }],
-    },
-  };
-  const pathExists = (rel) => rel === "plugins/pstack/skills/poteto-mode/SKILL.md" || rel === "plugins/pstack/hooks/session-start.sh";
-  test("needs the Claude Code name, native compat, existing paths, and one SessionStart hook", () => {
-    expect(() => validateMuseManifest(ok, { claude, pathExists })).not.toThrow();
-    expect(() => validateMuseManifest({ ...ok, name: "other" }, { claude, pathExists })).toThrow(
-      'name "other" != Claude Code manifest name "pstack"',
-    );
-    expect(() => validateMuseManifest({ ...ok, schemaVersion: 2 }, { claude, pathExists })).toThrow("is not 1");
-    expect(() => validateMuseManifest({ ...ok, compat: { source: "claude", manifestDir: ".claude-plugin" } }, { claude, pathExists })).toThrow(
-      "native .muse-plugin manifest",
-    );
-    const badPath = structuredClone(ok);
-    badPath.capabilities.skills[0].path = "skills/nope/SKILL.md";
-    expect(() => validateMuseManifest(badPath, { claude, pathExists })).toThrow("is not a file in the plugin");
-    const noHook = structuredClone(ok);
-    noHook.capabilities.hooks = [];
-    expect(() => validateMuseManifest(noHook, { claude, pathExists })).toThrow("expected one SessionStart hook, found 0");
-    const wrongArg = structuredClone(ok);
-    wrongArg.capabilities.hooks[0].command = ["sh", "hooks/session-start.sh", "claude"];
-    expect(() => validateMuseManifest(wrongArg, { claude, pathExists })).toThrow('not ["sh","hooks/session-start.sh","muse"]');
-  });
-
-  test("rejects a hook command that leaves the plugin or is not an argv list", () => {
-    const everywhere = () => true;
-    for (const command of [["sh", "../../tests/copilot-smoke.sh", "muse"], "sh hooks/session-start.sh muse"]) {
-      const bad = structuredClone(ok);
-      bad.capabilities.hooks[0].command = command;
-      expect(() => validateMuseManifest(bad, { claude, pathExists: everywhere })).toThrow("SessionStart hook command is");
-    }
-  });
-
-  test("rejects a command whose id duplicates a skill id", () => {
-    const dup = structuredClone(ok);
-    dup.capabilities.commands = [{ id: "poteto-mode", path: "skills/poteto-mode/SKILL.md" }];
-    expect(() => validateMuseManifest(dup, { claude, pathExists })).toThrow("duplicates a skill id");
-  });
-});
-
 describe("manifests", () => {
   const json = (rel) => JSON.parse(readFileSync(join(repoRoot, rel), "utf8"));
   const claude = json("plugins/pstack/.claude-plugin/plugin.json");
   const codex = json("plugins/pstack/.codex-plugin/plugin.json");
   const claudeMarketplace = json(".claude-plugin/marketplace.json");
   const codexMarketplace = json(".agents/plugins/marketplace.json");
-  const piPackage = json("package.json");
-  const copilot = json("plugins/pstack/.github/plugin/plugin.json");
-  const muse = json("plugins/pstack/.muse-plugin/plugin.json");
 
   test("the plugin and marketplace manifests agree on every fact they repeat", () => {
     const shared = ({ name, author, homepage, repository, license, keywords }) =>
@@ -109,12 +41,6 @@ describe("manifests", () => {
     expect(shared(codex)).toEqual(shared(claude));
     expect(claudeMarketplace.owner).toEqual(claude.author);
     expect(claudeMarketplace.plugins.map(({ name, source }) => [name, source])).toEqual([[claude.name, "./plugins/pstack"]]);
-    expect(shared(piPackage)).toEqual({ ...shared(claude), keywords: ["pi-package", ...claude.keywords] });
-    expect(piPackage.version).toBe(claude.version);
-    expect({ ...shared(copilot), keywords: claude.keywords }).toEqual(shared(claude));
-    expect(copilot.version).toBe(claude.version);
-    expect(muse.name).toBe(claude.name);
-    expect(muse.version).toBe(claude.version);
     expect(codexMarketplace.name).toBe(claudeMarketplace.name);
     expect(codexMarketplace.interface.displayName).toBe(codex.interface.displayName);
     expect(codexMarketplace.plugins.map(({ name, source, category }) => [name, source.path, category])).toEqual([
@@ -146,43 +72,6 @@ describe("Codex hook discovery", () => {
   test("an Agent Plugins manifest at the plugin root hides the hooks, as 0.9.83 did", () => {
     const manifest = JSON.stringify({ $schema: "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json", name: "pstack" });
     expect(codexHookEvents((rel) => (rel === "plugin.json" ? manifest : shipped(rel)))).toEqual([]);
-  });
-});
-
-describe("validatePiPackage", () => {
-  const ENTRY = "plugins/pstack/pi/index.ts";
-  const manifest = (pi, extra = {}) => JSON.stringify({ name: "pstack", keywords: ["pi-package"], ...extra, pi });
-  const good = { skills: ["./plugins/pstack/skills"], extensions: [`./${ENTRY}`] };
-  const everything = () => true;
-
-  test("accepts the skills tree and the extension entry when both exist", () => {
-    expect(() => validatePiPackage(manifest(good), { pathExists: everything })).not.toThrow();
-  });
-
-  test("names each listed path that does not exist", () => {
-    const pathExists = (rel) => rel !== "plugins/pstack/skill";
-    expect(() =>
-      validatePiPackage(manifest({ ...good, skills: ["./plugins/pstack/skill"] }), { pathExists }),
-    ).toThrow("package.json: pi.skills names ./plugins/pstack/skill, which does not exist");
-  });
-
-  test("requires the skills tree and the extension entry", () => {
-    expect(() => validatePiPackage(manifest({ ...good, skills: [] }), { pathExists: everything })).toThrow(
-      "package.json: pi.skills must list ./plugins/pstack/skills",
-    );
-    const { extensions, ...skillsOnly } = good;
-    expect(() => validatePiPackage(manifest(skillsOnly), { pathExists: everything })).toThrow(
-      `package.json: pi.extensions must list ./${ENTRY}`,
-    );
-  });
-
-  test("requires the pi-package keyword and no runtime dependencies", () => {
-    expect(() => validatePiPackage(manifest(good, { keywords: [] }), { pathExists: everything })).toThrow(
-      'package.json: keywords must include "pi-package"',
-    );
-    expect(() => validatePiPackage(manifest(good, { dependencies: { x: "1" } }), { pathExists: everything })).toThrow(
-      "package.json: the Pi package has no runtime dependencies",
-    );
   });
 });
 

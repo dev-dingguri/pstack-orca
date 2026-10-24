@@ -9,7 +9,6 @@ Tell `poteto-mode` your goal and it invokes the workflow that fits: reproduce an
 - Skills: Markdown instructions the agent reads. Public ones appear as `/pstack:<name>` slash commands.
 - Agents: `pstack:poteto-agent` and `pstack:comment-sicko`.
 - A SessionStart hook that injects the poteto-mode routing mandate unless your `pstack-models.md` sheet turns it off.
-- A Pi extension that supplies the subagent, question, and wake-up tools, `/loop`, and the same routing mandate when the repository is installed as a Pi package.
 - Local scripts for watching and shipping pull requests, orchestrating multi-phase plans, and auditing worktrees.
 
 ## Data handling

@@ -92,8 +92,21 @@ describe("checkFork", () => {
     expect(parse((p) => (p.taskEffort.strongest = "huge"))).toThrow('taskEffort "strongest" is not an effort level');
   });
 
-  test("rejects a policy without the claude provider", () => {
-    expect(parse((p) => (p.providers[0].id = "anthropic"))).toThrow('"providers" has no "claude" provider');
+  test("rejects a provider list that is not exactly claude and codex", () => {
+    const exactly = '"providers" must list exactly "claude" and "codex"';
+    expect(parse((p) => (p.providers[0].id = "anthropic"))).toThrow(exactly);
+    expect(parse((p) => (p.providers[1].id = "openai"))).toThrow(exactly);
+    expect(parse((p) => p.providers.pop())).toThrow(exactly);
+  });
+
+  test("rejects a codex provider that would fall back to the claude tiers", () => {
+    expect(parse((p) => delete p.providers[1].block)).toThrow('provider "codex" needs a block that models.json defines');
+    expect(parse((p) => (p.providers[0].block = "codex"))).toThrow('provider "claude" reads the top-level tiers and takes no block');
+  });
+
+  test("rejects an empty panel tier, which would drop that provider from every panel", () => {
+    expect(parse((p) => (p.codex.panel = []))).toThrow('provider "codex" has an empty panel tier');
+    expect(parse((p) => (p.tiers.panel = []))).toThrow('provider "claude" has an empty panel tier');
   });
 });
 

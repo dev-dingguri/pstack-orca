@@ -16,22 +16,17 @@
 //   user-invocable: false); a skill without a row or a row without a skill
 //   fails by name.
 //   plugins/pstack/models.json (the model policy: role defaults, diverse panel,
-//   available slugs, and one block per RUNTIMES row: Codex equivalents, Pi IDs)
+//   available slugs, and one block per RUNTIMES row: Codex equivalents)
 //     -> each model-consuming skill's "## Models" and "## Reasoning effort" sections
 //     -> setup-pstack's Models section and override-sheet block, and interrogate's reviewer table
 //     -> run-role's Roles section, the fork's dispatch table (tools/fork.mjs renders
 //        every role entry as model@provider)
 //     -> the "## Model names" section of each runtime's mapping file
-//        (poteto-mode/references/codex-tools.md, pi-tools.md, copilot-tools.md)
+//        (poteto-mode/references/codex-tools.md)
 //   the Per-skill notes table in poteto-mode/references/codex-tools.md
 //     -> the Codex preamble under the first heading of each listed skill's SKILL.md,
 //        and the codex-tools.md pointer in the prompt stub of every other public skill
-//   the Per-skill notes table in poteto-mode/references/copilot-tools.md
-//     -> the GitHub Copilot preamble under the same heading, after any Codex one
 //   DRIVER_PLAYBOOKS -> the driver-skill line under each playbook's first heading
-//   plugins/pstack/models.json's roles, again
-//     -> the role list in setup-pstack's scripts/sheet.awk, which checks a Copilot sheet
-//     -> the list of skills that dispatch on role models in hooks/session-start-copilot.md
 //   plugins/pstack/agents/comment-sicko.md, LICENSE, LICENSE-cursor-team-kit,
 //   and NOTICE-skills.md
 //     -> portable copies under poteto-mode/references/{agents,licenses}/
@@ -70,7 +65,7 @@ import {
   setupModelsSection,
 } from "./fork.mjs";
 import { code, PLUGIN, SKILLS } from "./plugin.mjs";
-import { RUNTIMES, roleSkills } from "./runtimes.mjs";
+import { RUNTIMES } from "./runtimes.mjs";
 import { markdownFiles, pathIsInside, validateProsePaths, validateSkillsTree, walk } from "./validate-skills.mjs";
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -382,23 +377,6 @@ export const lineStartingWith = (prefix) => (lines) => {
 
 const blankPadded = (body) => ["", ...body.split("\n"), ""];
 
-const SHEET_ROLES_OPEN = "  # Stamped from plugins/pstack/models.json; edit there and rerun tools/generate.mjs.";
-const ROLE_SKILLS_LINE = "Skills that dispatch on role models:";
-
-// awk string literals: models.json role labels and effort levels hold no quote
-// or backslash, which parseModels does not check, so check here.
-function sheetRoles(models) {
-  const quote = (s) => {
-    if (/["\\]/.test(s)) throw new Error(`models.json: "${s}" cannot go in an awk string`);
-    return `"${s}"`;
-  };
-  return [
-    ...models.roles.map((r) => `  roles[++n] = ${quote(r.role)}`),
-    ...models.roles.filter((r) => r.tier === "panel").map((r) => `  panel[${quote(r.role)}] = 1`),
-    ...models.efforts.map((level) => `  SHEET_EFFORT[${quote(level)}] = 1`),
-  ];
-}
-
 function requiredRole(models, label) {
   const role = models.roles.find((r) => r.role === label);
   if (!role) throw new Error(`models.json: no "${label}" role, which a stamped region renders from`);
@@ -463,30 +441,6 @@ export function regions(models) {
       locate: section("Model names"),
       render: () => blankPadded(runtime.modelNames(models)),
     })),
-    {
-      file: skillFile("setup-pstack").replace("SKILL.md", "scripts/sheet.awk"),
-      name: "role list",
-      locate: between(SHEET_ROLES_OPEN, "  return n"),
-      render: () => sheetRoles(models),
-    },
-    {
-      file: skillFile("setup-pstack").replace("SKILL.md", "copilot.md"),
-      name: "roles by tier",
-      locate: tableRows("| Tier | Roles |", "| "),
-      render: () =>
-        [
-          ["Default", "default"],
-          ["Strongest", "strongest"],
-          ["Worker", "worker"],
-          ["Panel", "panel"],
-        ].map(([label, tier]) => `| ${label} | ${models.roles.filter((r) => r.tier === tier).map((r) => code(r.role)).join(", ")} |`),
-    },
-    {
-      file: `${PLUGIN}/hooks/session-start-copilot.md`,
-      name: "role-model skill list",
-      locate: lineStartingWith(ROLE_SKILLS_LINE),
-      render: () => [`${ROLE_SKILLS_LINE} ${roleSkills(models).map(code).join(", ")}.`],
-    },
   ];
 }
 
