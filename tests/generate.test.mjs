@@ -45,7 +45,7 @@ import {
   strayModelSlugs,
   tableRows,
 } from "../tools/generate.mjs";
-import { piModelNamesSection, RUNTIMES } from "../tools/runtimes.mjs";
+import { RUNTIMES } from "../tools/runtimes.mjs";
 import { walk } from "../tools/validate-skills.mjs";
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));

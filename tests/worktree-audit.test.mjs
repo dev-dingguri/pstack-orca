@@ -1,11 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { execFileSync, spawnSync } from "node:child_process";
 import { chmodSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
+import { tmpdir } from "node:os";
 import { dirname, join, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { defaultSettings, PSTACK_STATE_DIR } from "../plugins/pstack/pi/config.ts";
 import { audit, classify, defaultTranscriptRoots, duSize, lastChats, pathSpellings, symlinkTargets } from "../plugins/pstack/skills/poteto-mode/scripts/worktree-audit.mjs";
 import { removeDuring } from "./remove-during.mjs";
 
@@ -680,15 +679,6 @@ describe("default transcripts roots", () => {
       if (gitPath(path) === claude) return {};
       throw Object.assign(new Error("root is absent"), { code });
     } }).map(gitPath)).toEqual([claude]);
-  });
-
-  test.each([
-    ["PI_CODING_AGENT_DIR", { PI_CODING_AGENT_DIR: "/pi" }],
-    ["the default agent directory", {}],
-  ])("the Pi roots are where the extension keeps sessions and agent state under %s", (_, env) => {
-    const { agentDir } = defaultSettings(() => 0, env);
-    const roots = defaultTranscriptRoots({ env, home: homedir(), stat: () => ({}) });
-    expect(roots).toEqual(expect.arrayContaining([join(agentDir, "sessions"), join(agentDir, PSTACK_STATE_DIR)]));
   });
 });
 
