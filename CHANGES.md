@@ -2,6 +2,15 @@
 
 This file is the release changelog, with one `## <version> - <title>` entry per release, newest first. The Cursor-to-Claude rewrite rules live in [`tools/substitutions.json`](tools/substitutions.json), and the [sync boundary](CONTRIBUTING.md#the-sync-boundary) in `CONTRIBUTING.md` defines how a change to upstream's skill content is declared.
 
+## 0.15.2 - launch Codex workers unsupervised while Orca cannot start them
+
+User report: a Claude Code session could not dispatch a review to `gpt-6-astra@codex`. With Orca 1.4.243 and Codex CLI 0.160.0, `worker-start --agent codex` failed twice at `agent_readiness` with `timeout`. A Codex launched without a prompt sent no hook event to Orca for 30 seconds, while a prompted one reported its turn, so `worker-start` waits for a signal that Codex sends only after the prompt `worker-start` has not sent yet. `worker-start --terminal` on a Codex terminal that had finished a turn failed with `agent_unconfigured`. `orca agent launch --prompt` delivered the brief in about a second. Claude Code workers reached `ready` and returned `worker_done` from a Claude Code coordinator and from a Codex coordinator.
+
+- `orca-delegate` adds an Unsupervised launch section: the caller starts the agent with `agent launch`, keeps the contract and result location, drops the lifecycle instructions, treats the result file as the completion signal, and closes the terminal itself. Without a Run, the contract takes a call ID such as `unsupervised-20261030T041200Z-<work-key>`.
+- Codex workers take this path from the start while the section lists the Codex start failure, because a supervised attempt only waits out the timeout and spends one of the Task's three starts. The start line says the worker runs unsupervised and why. The failure is recorded with its versions and a removal condition. Claude Code workers keep the supervised path, which keeps `worker_done`, `ask`, and release accounting.
+- `run-role` step 2 routes a Codex entry to the unsupervised launch, steps 4 and 6 name its terminal read and result file, and step 5 offers it as a fourth choice for any other failed start and leaves the retry out when the error matches a known failure.
+- `file-delivery.md` deletes an unsupervised launch's contract directory when its terminal closes, since no release receipt comes.
+
 ## 0.15.1 - run bug-fix, perf-issue, and hillclimb on the default tier
 
 Cursor pstack reserves its strongest model for the hardest tasks. At `7b353f7` it runs bug-fix, perf-issue, and hillclimb on its code model (`grok-4.7-xhigh-fast`, the same as feature) and keeps `claude-opus-5-5-xhigh` for "hardest tasks" (`setup-pstack/SKILL.md`, `poteto-mode/SKILL.md`). pstack-claude 0.9.88 moved these roles from Fable to Opus for the same reason, but the 0.15.0 merge kept them on the fork's strongest tier.

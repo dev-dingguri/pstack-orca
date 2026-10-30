@@ -69,7 +69,7 @@ An explicit request for a terminal agent, supervised Orca worker, or full owners
 - Provider equals the host: native. On Claude Code, one `Agent` call with `run_in_background: true`, `model` set to the entry's family name, `effort` set to the resolved effort, and the `subagent_type` the calling skill prescribes. On Codex, one `spawn_agent` with the entry's model.
 
 The `Agent` tool's `model` accepts only a family name and rejects a full model ID. The family name selects that family's current model. The `Agent` tool has no `readonly` parameter; drop a prescribed `readonly` and state step 3's `consult` limit in the brief instead.
-- Provider differs from the host: an Orca worker. Read the bundled [orca-delegate skill](../orca-delegate/SKILL.md) and its [file delivery reference](../orca-delegate/references/file-delivery.md), then follow them with the provider from the entry, the model as the user-selected model, the mode from the [Roles](#roles) table, and the work location and result location from step 3. The contract carries the brief.
+- Provider differs from the host: an Orca worker. Read the bundled [orca-delegate skill](../orca-delegate/SKILL.md) and its [file delivery reference](../orca-delegate/references/file-delivery.md), then follow them with the provider from the entry, the model as the user-selected model, the mode from the [Roles](#roles) table, and the work location and result location from step 3. The contract carries the brief. A Codex entry runs through orca-delegate's [Unsupervised launch](../orca-delegate/SKILL.md#unsupervised-launch) while that section lists a known Codex start failure.
 
 Pass the resolved effort through the native tool's effort parameter (`effort` on Claude Code's `Agent`, `reasoning_effort` on Codex's `spawn_agent`) or Orca's `--effort` together with `--model`. On Codex, use a fresh task with `fork_turns: "none"` when selecting model or effort explicitly, and provide the brief and required file paths. Do not invent native tool parameters or treat prompt wording as an effort setting. If the native tool cannot set effort, disclose that it inherits the runtime setting; do not switch transports solely to force it. For Orca, verify requested model and effort against the launch receipt. Report unsupported or unconfirmed settings without claiming they took effect; a rejected launch follows step 5.
 
@@ -86,7 +86,7 @@ While any Orca worker, `consult` included, runs in the current worktree, leave t
 
 ### 4. Prepare and launch
 
-Prepare every Orca dispatch first: reserve its call directory, write its contract, and read the contract back. Then launch the whole role in one message: every native call and every Orca `worker-start` side by side. For each Orca dispatch, run orca-delegate's submission check and report one line as soon as the start outcome is known: the provider, launch path, and worker or task identifier on success; the attempted command and the error on failure.
+Prepare every Orca dispatch first: reserve its call directory, write its contract, and read the contract back. Then launch the whole role in one message: every native call and every Orca start side by side. For each Orca dispatch, run orca-delegate's submission check, or the terminal read its unsupervised launch prescribes, and report one line as soon as the start outcome is known: the provider, launch path, and worker or task identifier on success; the attempted command and the error on failure.
 
 ### 5. An Orca start that fails
 
@@ -95,12 +95,15 @@ The other dispatches keep running; do not stop them. For the failed one, do not 
 - Retry the start.
 - Run this dispatch natively on the host provider's single-role default from the Providers table, noting in the result that diversity was reduced.
 - Drop the dispatch and continue with the rest, noting the dropout.
+- Run this dispatch unsupervised through Orca's agent launch, as orca-delegate's [Unsupervised launch](../orca-delegate/SKILL.md#unsupervised-launch) describes. It keeps the entry's provider and model but has no completion report and cannot take questions.
+
+When the error matches a known start failure in that section, say so and leave the retry out.
 
 Wait for the answer before the calling skill synthesizes, judges, or ships anything that depends on that dispatch.
 
 ### 6. Collect
 
-Native results arrive in the call's response. For an Orca worker, match the completion message to the task, read the complete result at its result location, and verify it against the brief as orca-delegate prescribes; a completion summary alone is not a result. Hand the calling skill every result labelled by its entry so verdicts and synthesis notes can name the model and provider.
+Native results arrive in the call's response. For an Orca worker, match the completion message to the task, read the complete result at its result location, and verify it against the brief as orca-delegate prescribes; a completion summary alone is not a result. For an unsupervised launch, the result file replaces the completion message. Hand the calling skill every result labelled by its entry so verdicts and synthesis notes can name the model and provider.
 
 ## Roles
 
