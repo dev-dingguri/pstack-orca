@@ -373,8 +373,9 @@ describe("Codex model names", () => {
     expect(section).toContain("run-role");
     expect(section).toContain(`\`${raw.codex.default}@codex\``);
     expect(strongestLine).toContain(`\`${raw.codex.strongest}@codex\``);
-    for (const role of ["bug-fix", "perf-issue", "hillclimb", "strongest judgment"]) {
-      expect(strongestLine).toContain(`\`${role}\``);
+    expect(strongestLine).toContain("`strongest judgment`");
+    for (const role of ["bug-fix", "perf-issue", "hillclimb"]) {
+      expect(strongestLine).not.toContain(`\`${role}\``);
     }
     expect(strongestLine).not.toContain("`reflect tooling`");
     expect(section).toContain(`\`${raw.tiers.default}@claude\`, \`${raw.codex.panel[0]}@codex\``);

@@ -15,9 +15,9 @@
   ],
   "roles": [
     { "role": "feature, refactoring", "models": "default", "skill": "poteto-mode", "mode": "execute" },
-    { "role": "bug-fix", "models": "strongest", "skill": "poteto-mode", "mode": "execute" },
-    { "role": "perf-issue", "models": "strongest", "skill": "poteto-mode", "mode": "execute" },
-    { "role": "hillclimb", "models": "strongest", "skill": "poteto-mode", "mode": "execute" },
+    { "role": "bug-fix", "models": "default", "skill": "poteto-mode", "mode": "execute" },
+    { "role": "perf-issue", "models": "default", "skill": "poteto-mode", "mode": "execute" },
+    { "role": "hillclimb", "models": "default", "skill": "poteto-mode", "mode": "execute" },
     { "role": "judgment and prose", "models": "default", "skill": "poteto-mode", "mode": "consult" },
     { "role": "strongest judgment", "models": "strongest", "skill": "poteto-mode", "mode": "execute" },
     { "role": "how explorer", "models": "default", "skill": "how", "mode": "consult" },

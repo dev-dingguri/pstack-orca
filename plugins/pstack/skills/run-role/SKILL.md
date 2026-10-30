@@ -114,9 +114,9 @@ Stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs
 | Role | Skill | Mode | Tier | Default entries |
 | --- | --- | --- | --- | --- |
 | feature, refactoring | poteto-mode | execute | single | `opus@claude` |
-| bug-fix | poteto-mode | execute | strongest | `fable@claude` |
-| perf-issue | poteto-mode | execute | strongest | `fable@claude` |
-| hillclimb | poteto-mode | execute | strongest | `fable@claude` |
+| bug-fix | poteto-mode | execute | single | `opus@claude` |
+| perf-issue | poteto-mode | execute | single | `opus@claude` |
+| hillclimb | poteto-mode | execute | single | `opus@claude` |
 | judgment and prose | poteto-mode | consult | single | `opus@claude` |
 | strongest judgment | poteto-mode | execute | strongest | `fable@claude` |
 | how explorer | how | consult | single | `opus@claude` |

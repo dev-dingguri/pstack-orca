@@ -57,9 +57,9 @@ Write the current runtime's sheet with the shape below. Overwrite the whole file
 Per-role model overrides for pstack skills. Each pstack SKILL.md names its defaults in a Models section; the values here override those defaults. Delete a line to fall back to the skill default. Write each entry as `model@provider`; an entry whose provider is not the host runs as an Orca worker through the run-role skill, and a bare model must be one the setup skill lists. A value of `inherit-parent` or `auto` runs that role on the parent session's model (the `Agent` call omits `model`); an alias entry in a panel list still counts toward that panel's fan-out. A pool line (`arena cross-judge pool`, `trail reviewer pool`) is a candidate list from which its skill selects one entry; its length sets no count. An entry may carry a reasoning effort after a space, as in `opus@claude @xhigh` (levels: low, medium, high, xhigh, max); the role's subagent then runs at that level, each entry of a panel list on its own. A `default effort` line sets the level for a value without one, and `session` keeps the parent session's effort; without that line, ordinary work runs at `high` and difficult work at `xhigh`. `session hook: off` stops the Claude Code or Codex SessionStart hook from injecting the poteto-mode mandate; any other value, or no line, leaves it on.
 
 feature, refactoring: opus@claude
-bug-fix: fable@claude
-perf-issue: fable@claude
-hillclimb: fable@claude
+bug-fix: opus@claude
+perf-issue: opus@claude
+hillclimb: opus@claude
 judgment and prose: opus@claude
 strongest judgment: fable@claude
 how explorer: opus@claude

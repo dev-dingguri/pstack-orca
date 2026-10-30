@@ -2,6 +2,14 @@
 
 This file is the release changelog, with one `## <version> - <title>` entry per release, newest first. The Cursor-to-Claude rewrite rules live in [`tools/substitutions.json`](tools/substitutions.json), and the [sync boundary](CONTRIBUTING.md#the-sync-boundary) in `CONTRIBUTING.md` defines how a change to upstream's skill content is declared.
 
+## 0.15.1 - run bug-fix, perf-issue, and hillclimb on the default tier
+
+Cursor pstack reserves its strongest model for the hardest tasks. At `7b353f7` it runs bug-fix, perf-issue, and hillclimb on its code model (`grok-4.7-xhigh-fast`, the same as feature) and keeps `claude-opus-5-5-xhigh` for "hardest tasks" (`setup-pstack/SKILL.md`, `poteto-mode/SKILL.md`). pstack-claude 0.9.88 moved these roles from Fable to Opus for the same reason, but the 0.15.0 merge kept them on the fork's strongest tier.
+
+- `models.json` moves `bug-fix`, `perf-issue`, and `hillclimb` from the `strongest` tier to `default`, so they run on `opus@claude` and, on Codex, `gpt-6.1-sol@codex`. `strongest judgment` stays on `strongest`, and `feature, refactoring` stays on `default`.
+- A hard bug or perf fix still reaches the strongest model. run-role classifies it as a `strongest` task, which swaps the entry for its provider's strongest-role default.
+- `tests/fork.test.mjs` and `tests/agent-skills.test.mjs` pin the new policy: `strongest judgment` is the only strongest-tier role, and the Codex strongest-role line names only it.
+
 ## 0.15.0 - merge pstack-claude 0.9.102 and rebuild the provider layer on its tiers
 
 This release merges pstack-claude from 0.9.37 to 0.9.102 (`356c6e0`). The merge brings in upstream's Cursor sync to `7b353f7` (v0.15.27), the thermos and formal verification skills, `tools/forks.json`, and the generator split into `tools/runtimes.mjs`. pstack-claude moved `models.json` from full model IDs to tiers (`default`, `strongest`, `worker`, `panel`) of Claude family names, with a block per runtime. It also passes reasoning effort as the dispatch's `effort` field. The fork's provider layer is rebuilt on that shape instead of keeping the old one.

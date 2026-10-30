@@ -29,10 +29,11 @@ describe("provider panel", () => {
   });
 
   test("single-model roles default to the claude host and keep the fork's tiers", () => {
-    expect(roleEntries(models, role("feature, refactoring"))).toEqual([`${raw.tiers.default}@claude`]);
-    for (const label of ["bug-fix", "perf-issue", "hillclimb", "strongest judgment"]) {
-      expect(roleEntries(models, role(label))).toEqual([`${raw.tiers.strongest}@claude`]);
+    for (const label of ["feature, refactoring", "bug-fix", "perf-issue", "hillclimb"]) {
+      expect(roleEntries(models, role(label))).toEqual([`${raw.tiers.default}@claude`]);
     }
+    expect(models.roles.filter((r) => r.tier === "strongest").map((r) => r.role)).toEqual(["strongest judgment"]);
+    expect(roleEntries(models, role("strongest judgment"))).toEqual([`${raw.tiers.strongest}@claude`]);
     expect(models.roles.some((r) => r.tier === "worker")).toBe(false);
   });
 

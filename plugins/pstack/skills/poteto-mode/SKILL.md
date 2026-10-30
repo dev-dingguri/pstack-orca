@@ -166,9 +166,9 @@ A large or cross-cutting effort (a migration across many call sites, an ambitiou
 Role defaults, stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). A matching role line in the `pstack-models.md` override sheet overrides each at runtime; `/setup-pstack` writes it and lists its path per runtime. Each entry is `model@provider`; the **run-role** skill runs an entry natively when its provider is the host and as an Orca worker otherwise, in the mode shown.
 
 - feature, refactoring: `opus@claude` (execute)
-- bug-fix: `fable@claude` (execute)
-- perf-issue: `fable@claude` (execute)
-- hillclimb: `fable@claude` (execute)
+- bug-fix: `opus@claude` (execute)
+- perf-issue: `opus@claude` (execute)
+- hillclimb: `opus@claude` (execute)
 - judgment and prose: `opus@claude` (consult)
 - strongest judgment: `fable@claude` (execute)
 
