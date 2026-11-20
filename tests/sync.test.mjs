@@ -25,9 +25,11 @@ import {
   denylistHits,
   mergeFile,
   parseForks,
+  parseUpstream,
   parseRule,
   parseSubstitutions,
   syncComponent,
+  unmatchedRules,
 } from "../tools/sync.mjs";
 
 const RULES = parseSubstitutions(JSON.parse(readFileSync(join(import.meta.dir, "../tools/substitutions.json"), "utf8")));
@@ -92,14 +94,12 @@ describe("applySubstitutions", () => {
     expect(text).toBe("Prefer AskUserQuestion here.");
   });
 
-  test("the override sheet path survives the generic .cursor/rules/ rule", () => {
+  test("the override sheet path becomes the port's sheet name", () => {
     const { text } = applySubstitutions(
-      "Use `arena runners` from `~/.cursor/rules/pstack-models.mdc` when present. Rules in .cursor/rules/ apply.",
+      "Use `arena runners` from `~/.cursor/rules/pstack-models.mdc` when present.",
       RULES.substitutions,
     );
-    expect(text).toBe(
-      "Use `arena runners` from `pstack-models.md` when present. Rules in CLAUDE.md imports apply.",
-    );
+    expect(text).toBe("Use `arena runners` from `pstack-models.md` when present.");
   });
 
   test("the driver-skill and model-default phrases rewrite as the port writes them", () => {
@@ -110,7 +110,6 @@ describe("applySubstitutions", () => {
         "Drive via the relevant control skill and through its control skill.",
         "<control skill path> and the control skill's commands",
         "Multiple `Task` calls in the Task tool.",
-        "on \"restart Cursor\"",
       ].join("\n"),
       RULES.substitutions,
     );
@@ -121,19 +120,15 @@ describe("applySubstitutions", () => {
         "Drive via the relevant driver skill and through its driver skill.",
         "<driver skill path> and the driver skill's commands",
         "Multiple `Agent` calls in the `Agent` tool.",
-        "on \"restart Claude Code\"",
       ].join("\n"),
     );
   });
 
-  test("a model default points at the Models section that owns the file, whatever the slug", () => {
+  test("a playbook model default points at poteto-mode's Models section, whatever the slug", () => {
     const line = (slug) => `your configured hillclimb model (default \`${slug}\`)`;
     for (const slug of ["grok-4.7-xhigh-fast", "claude-fable-5-1-thinking-max", "gpt-6-sol-max"]) {
       expect(applySubstitutions(line(slug), RULES.substitutions, "skills/poteto-mode/playbooks/hillclimb.md").text).toBe(
         "your configured hillclimb model (default in poteto-mode's Models section)",
-      );
-      expect(applySubstitutions(line(slug), RULES.substitutions, "skills/reflect/SKILL.md").text).toBe(
-        "your configured hillclimb model (default in [Models](#models))",
       );
     }
     expect(applySubstitutions("(default `true`)", RULES.substitutions, "skills/reflect/SKILL.md").text).toBe(
@@ -160,11 +155,6 @@ describe("applySubstitutions", () => {
   test.each([
     [
       "skills/how/SKILL.md",
-      "Each spawn below names a role line in the `pstack-models.mdc` rule and a default. Set `model` to that line's value, or to the default if the rule or the line is missing.",
-      "Each spawn below names a role line in `pstack-models.md` and a default in [Models](#models). Set `model` to that line's value, or to the default if the sheet or the line is missing.",
-    ],
-    [
-      "skills/how/SKILL.md",
       "If the Task tool rejects a slug, use the default and say so.",
       "If the `Agent` tool rejects a slug, use the default and say so.",
     ],
@@ -174,18 +164,8 @@ describe("applySubstitutions", () => {
       "Once all explorers have returned, spawn one `Agent` subagent to synthesize their findings into one explanation:",
     ],
     [
-      "skills/how/SKILL.md",
-      "- `model`: the `how explorer` line, default `grok-4.7-xhigh-fast`",
-      "- `model`: the `how explorer` line, default in [Models](#models)",
-    ],
-    [
-      "skills/architect/SKILL.md",
-      "Take the runners from the `architect runners` line in the `pstack-models.mdc` rule, in place of the `arena runners` line. If the rule or that line is missing, use",
-      "Take the runners from the `architect runners` line in `pstack-models.md`, in place of the `arena runners` line. If the sheet or that line is missing, use",
-    ],
-    [
       "skills/arena/SKILL.md",
-      "Families go by prefix: `claude-*`, `gpt-*`, and `grok-*`.",
+      "Families go by prefix, and the longest match wins: `claude-fable-*`, `claude-*`, and `gemini-*`, after dropping a leading `cursor-`. Any other slug's family is its text before the first hyphen.",
       "Families go by model name, such as Opus, Fable, or Sonnet.",
     ],
     [
@@ -234,24 +214,9 @@ describe("applySubstitutions", () => {
       "Pick the wake mechanism using Claude Code's `loop` skill (a built-in, not a pstack skill).",
     ],
     [
-      "skills/poteto-mode/SKILL.md",
-      "on an explicit pause, going offline, a Cursor restart, or imminent context compaction.",
-      "on an explicit pause, going offline, a session restart, or imminent context compaction.",
-    ],
-    [
       "skills/poteto-mode/playbooks/babysit.md",
-      'This playbook replaces Cursor\'s built-in babysit skill for these requests, for "address the bugbot comments".',
-      'This playbook replaces the bundled **babysit** skill for these requests, for "address the review-bot comments".',
-    ],
-    [
-      "skills/poteto-mode/playbooks/autopilot-full.md",
-      "One Cursor cloud agent per PR owns build, skeptical Bugbot triage, and the fixes.",
-      "One background subagent per PR, in its own worktree, owns build, skeptical review-bot triage, and the fixes.",
-    ],
-    [
-      "skills/poteto-mode/playbooks/autopilot-stack.md",
-      "On the operator's explicit go, arm a `/goal` with the full program objective. The goal continues across turns until the chain is done.",
-      "On the operator's explicit go, write the full program objective into the standing orders and restate it in your todolist. That objective stands across turns until the chain is done.",
+      "This playbook replaces Cursor's built-in babysit skill for these requests.",
+      "This playbook replaces the bundled **babysit** skill for these requests.",
     ],
     [
       "agents/poteto-agent.md",
@@ -273,12 +238,64 @@ describe("parseSubstitutions", () => {
     expect(() => parseRule(rule({ pattern: "a", file: "^skills/" }), 0)).toThrow('unknown field "file"');
   });
 
+  test("a null or non-object rule fails naming the entry instead of a bare TypeError", () => {
+    expect(() => parseRule(null, 4)).toThrow("substitutions[4]: must be an object");
+    expect(() => parseRule(undefined, 1)).toThrow("substitutions[1]: must be an object");
+    expect(() => parseRule(["pattern"], 0)).toThrow("substitutions[0]: must be an object");
+    expect(() => parseRule("Cursor", 2)).toThrow("substitutions[2]: must be an object");
+    expect(() => parseSubstitutions({ substitutions: [null], denylist: [] })).toThrow(
+      "substitutions[0]: must be an object",
+    );
+  });
+
+  test("a non-array substitutions or denylist fails naming the field instead of a bare TypeError", () => {
+    expect(() => parseSubstitutions(null)).toThrow("substitutions.json: must be an object");
+    expect(() => parseSubstitutions([])).toThrow("substitutions.json: must be an object");
+    expect(() => parseSubstitutions({})).toThrow("substitutions: must be an array");
+    expect(() => parseSubstitutions({ substitutions: null })).toThrow("substitutions: must be an array");
+    expect(() => parseSubstitutions({ substitutions: {} })).toThrow("substitutions: must be an array");
+    expect(() => parseSubstitutions({ substitutions: [], denylist: null })).toThrow("denylist: must be an array");
+    expect(() => parseSubstitutions({ substitutions: [], denylist: {} })).toThrow("denylist: must be an array");
+    expect(parseSubstitutions({ substitutions: [] })).toEqual({ substitutions: [], denylist: [] });
+  });
+
   test("a rule needs exactly one matcher, a replacement, and a rationale", () => {
     expect(() => parseRule(rule({}), 0)).toThrow("exactly one of a non-empty pattern or regex");
     expect(() => parseRule(rule({ pattern: "a", regex: "a" }), 0)).toThrow("exactly one");
     expect(() => parseRule(rule({ pattern: "" }), 0)).toThrow("exactly one");
     expect(() => parseRule({ pattern: "a", rationale: "fixture" }, 0)).toThrow("needs a replacement string");
     expect(() => parseRule({ pattern: "a", replacement: "X" }, 0)).toThrow("needs a rationale");
+  });
+
+  test("an invalid regex or files regex fails naming the rule and the source", () => {
+    expect(() => parseRule(rule({ regex: "a(" }), 7)).toThrow('substitutions[7]: regex "a(" is not a valid regex');
+    expect(() => parseRule(rule({ pattern: "a", files: "^skills/[" }), 2)).toThrow(
+      'substitutions[2]: files "^skills/[" is not a valid regex',
+    );
+  });
+
+  test("a denylist entry needs exactly one matcher and a hint, and a bad regex names the entry", () => {
+    const empty = { substitutions: [], denylist: [{ hint: "x" }] };
+    expect(() => parseSubstitutions(empty)).toThrow(
+      "denylist[0]: needs exactly one of a non-empty token or regex",
+    );
+    expect(() => parseSubstitutions({ substitutions: [], denylist: [{ token: "a", regex: "a", hint: "x" }] })).toThrow(
+      "exactly one of a non-empty token or regex",
+    );
+    expect(() => parseSubstitutions({ substitutions: [], denylist: [{ token: "", hint: "x" }] })).toThrow(
+      "exactly one of a non-empty token or regex",
+    );
+    expect(() => parseSubstitutions({ substitutions: [], denylist: [{ token: "a" }] })).toThrow("denylist[0]: needs a hint");
+    expect(() => parseSubstitutions({ substitutions: [], denylist: [{ tokn: "a", hint: "x" }] })).toThrow(
+      'denylist[0]: unknown field "tokn"',
+    );
+    expect(() => parseSubstitutions({ substitutions: [], denylist: [{ regex: "a(", hint: "x" }] })).toThrow(
+      'denylist[0]: regex "a(" is not a valid regex',
+    );
+    const { denylist } = parseSubstitutions({ substitutions: [], denylist: [{ token: "Cursor", hint: "rewrite it" }] });
+    expect(denylistHits("f.md", "no\nCursor here\nok", denylist)).toEqual([
+      'f.md:2: "Cursor" — rewrite it',
+    ]);
   });
 
   test("a pattern that contains an earlier rule's pattern fails, since it could never match", () => {
@@ -306,6 +323,29 @@ describe("parseSubstitutions", () => {
   });
 });
 
+describe("parseUpstream", () => {
+  test("a null or non-object root or components map fails naming it instead of a bare TypeError", () => {
+    expect(() => parseUpstream(null)).toThrow("upstream.json: must be an object");
+    expect(() => parseUpstream(undefined)).toThrow("upstream.json: must be an object");
+    expect(() => parseUpstream([])).toThrow("upstream.json: must be an object");
+    expect(() => parseUpstream("x")).toThrow("upstream.json: must be an object");
+    expect(() => parseUpstream({})).toThrow('upstream.json: "components" must be an object');
+    expect(() => parseUpstream({ components: null })).toThrow('upstream.json: "components" must be an object');
+    expect(() => parseUpstream({ components: [] })).toThrow('upstream.json: "components" must be an object');
+    expect(() => parseUpstream({ components: { kit: null } })).toThrow(
+      'upstream.json: component "kit" must be an object',
+    );
+    expect(() => parseUpstream({ components: { kit: [] } })).toThrow(
+      'upstream.json: component "kit" must be an object',
+    );
+    expect(parseUpstream({ components: {} })).toEqual({ components: {} });
+    expect(parseUpstream({ remote: "https://example.invalid", components: { kit: { sha: "abc" } } })).toEqual({
+      remote: "https://example.invalid",
+      components: { kit: { sha: "abc" } },
+    });
+  });
+});
+
 describe("parseForks", () => {
   const components = { kit: { localPath: "plugins/pstack/skills" } };
   const path = "plugins/pstack/skills/s.md";
@@ -328,6 +368,62 @@ describe("parseForks", () => {
     expect(() => parseForks({ other: {} }, components)).toThrow('forks.json: unknown component "other"');
     expect(() => parseForks({ kit: { "tools/s.md": entry } }, components)).toThrow("not under plugins/pstack/skills");
   });
+
+  test("a null or non-object registry or component map fails naming it instead of a bare TypeError", () => {
+    expect(() => parseForks(null, components)).toThrow("forks.json: must be an object");
+    expect(() => parseForks([], components)).toThrow("forks.json: must be an object");
+    expect(() => parseForks({ kit: null }, components)).toThrow("forks.json kit: must be an object");
+    expect(() => parseForks({ kit: [] }, components)).toThrow("forks.json kit: must be an object");
+    expect(parseForks({}, components)).toEqual({});
+    expect(parseForks({ kit: {} }, components).kit).toEqual(new Map());
+  });
+});
+
+describe("unmatchedRules", () => {
+  const rules = (...substitutions) =>
+    parseSubstitutions({
+      substitutions: substitutions.map((rule) => ({ replacement: "x", rationale: "fixture", ...rule })),
+      denylist: [],
+    }).substitutions;
+
+  test("lists the rules that match no file in any tree, in rule order", () => {
+    const first = tree({ "skills/a.md": "alpha\n" });
+    const second = tree({ "b.md": "beta\n" });
+    const unmatched = unmatchedRules(rules({ pattern: "gamma" }, { pattern: "alpha" }, { pattern: "beta" }, { regex: "del+ta" }), [
+      { dir: first, exclude: [] },
+      { dir: second, exclude: [] },
+    ]);
+    expect(unmatched).toEqual(["gamma", "del+ta"]);
+  });
+
+  test("skips excluded, binary, and symlinked files", () => {
+    const outside = tree({ "linked.md": "linked\n" });
+    const dir = tree({ "docs/excluded.md": "excluded\n", "kept.md": "kept\n" });
+    writeFileSync(join(dir, "binary.png"), Buffer.from("binary\0"));
+    symlinkSync(join(outside, "linked.md"), join(dir, "link.md"));
+    const unmatched = unmatchedRules(
+      rules({ pattern: "excluded" }, { pattern: "binary" }, { pattern: "linked" }, { pattern: "kept" }),
+      [{ dir, exclude: ["docs/"] }],
+    );
+    expect(unmatched).toEqual(["excluded", "binary", "linked"]);
+  });
+
+  test("scopes a files rule to the path inside its tree", () => {
+    const dir = tree({ "skills/a.md": "word\n", "skills/b.md": "term\n" });
+    const unmatched = unmatchedRules(
+      rules({ regex: "word", files: "^skills/a\\.md$" }, { regex: "term", files: "^skills/a\\.md$" }),
+      [{ dir, exclude: [] }],
+    );
+    expect(unmatched).toEqual(["term in ^skills/a\\.md$"]);
+  });
+
+  test("counts a rule whose text an earlier rule rewrote as unmatched", () => {
+    const dir = tree({ "a.md": "cloud workers\n" });
+    const unmatched = unmatchedRules(rules({ pattern: "cloud", replacement: "local" }, { regex: "cloud workers" }), [
+      { dir, exclude: [] },
+    ]);
+    expect(unmatched).toEqual(["cloud workers"]);
+  });
 });
 
 describe("denylistHits", () => {
@@ -337,6 +433,18 @@ describe("denylistHits", () => {
     expect(denylistHits("playbook.md", "default `gpt-6-sol-max`", RULES.denylist)).toHaveLength(1);
     expect(denylistHits("arena.md", "one each on `claude-opus-5-5-max`", RULES.denylist)).toHaveLength(1);
     expect(denylistHits("how.md", "the role line in the `pstack-models.mdc` rule", RULES.denylist)).toHaveLength(1);
+  });
+
+  test("a Cursor phrase that no rule rewrites any more fails the scan if upstream brings it back", () => {
+    for (const line of [
+      'on "restart Cursor"',
+      "Rules in .cursor/rules/ apply.",
+      "One Cursor cloud agent per PR owns build.",
+      "arm a `/goal` with the full program objective.",
+    ]) {
+      const { text } = applySubstitutions(line, RULES.substitutions);
+      expect(denylistHits("playbook.md", text, RULES.denylist)).toHaveLength(1);
+    }
   });
 
   test("a model name in an example is not a Cursor slug", () => {
@@ -1557,6 +1665,29 @@ describe("sync CLI", () => {
     const local = () => readFileSync(join(port, "plugins/pstack/skills/s.md"), "utf8");
     return { oldSha, newSha, scratch, run, runAt, pin, local, port };
   }
+
+  test("--check-rules fails on a rule that matches nothing at the pin, and passes once it is gone", () => {
+    const { port, scratch } = cli({ oldText: "use the Task tool\n", newText: "use the Task tool\n", localText: "" });
+    const rule = (pattern) => ({ pattern, replacement: "x", rationale: "fixture" });
+    const check = (...substitutions) => {
+      writeFileSync(join(port, "tools/substitutions.json"), JSON.stringify({ substitutions, denylist: [] }));
+      return spawnSync(process.execPath, [join(port, "tools/sync.mjs"), "--check-rules"], {
+        encoding: "utf8",
+        env: { ...process.env, TMPDIR: scratch },
+      });
+    };
+
+    const failing = check(rule("Task tool"), rule("cloud workers"));
+    expect(failing.status).toBe(1);
+    expect(failing.stderr).toContain("FAIL: substitution rules that match no upstream file");
+    expect(failing.stderr).toContain("  cloud workers\n");
+    expect(failing.stderr).not.toContain("  Task tool\n");
+
+    const passing = check(rule("Task tool"));
+    expect(passing.status).toBe(0);
+    expect(passing.stdout).toContain("ok: each of the 1 substitution rules matches upstream at the pinned SHAs");
+    expect(readdirSync(scratch).filter((name) => name.startsWith("pstack-"))).toEqual([]);
+  });
 
   test("a denylist failure exits 1 and removes its scratch clone", () => {
     const { run, scratch } = cli({ oldText: "one\n", newText: "run control-cli\n", localText: "one\n" });

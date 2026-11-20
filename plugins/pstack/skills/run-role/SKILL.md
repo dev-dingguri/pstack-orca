@@ -7,17 +7,17 @@ description: "Dispatch one pstack role to its configured model entries: natively
 
 On Codex, read the [platform mapping](../poteto-mode/references/codex-tools.md), including its per-skill notes, before following this skill.
 
-Every pstack skill that fans work out names a role (`arena runners`, `why investigators`, `swarm workers`). This skill turns a role into running agents. It is the one place that decides native subagent versus Orca worker. The calling skill owns the prompts, the review of results, and the authority the workers act under; this skill adds none.
+Every pstack skill that fans work out names a role (`arena runners`, `interrogate reviewers`, `swarm workers`). This skill turns a role into running agents. It is the one place that decides native subagent versus Orca worker. The calling skill owns the prompts, the review of results, and the authority the workers act under; this skill adds none.
 
 ## Inputs
 
 The calling skill hands over a list of dispatches. Each dispatch is one agent to run and names:
 
 - The role label, exactly as it appears in the [Roles](#roles) table.
-- The entry to run it on, chosen by the caller from the role's resolved entries (step 1). A caller may repeat one entry (`how` runs two to four explorers on the one `how explorer` entry; `swarm` runs N workers), map entries one to one (a reviewer per `interrogate reviewers` entry), or pick a single entry (arena's cross-judge).
-- The brief: the task, file pointers rather than inlined context, and what to report. The calling skill writes it. Where the caller assigns an output location per agent (arena candidates, swarm workers, architect design packages), the brief names it.
+- The entry to run it on, chosen by the caller from the role's resolved entries (step 1). A caller may repeat one entry (`swarm` runs N workers on the one `swarm workers` entry), map entries one to one (an adversary per `interrogate reviewers` entry), or pick a single entry (arena's cross-judge).
+- The brief: the task, file pointers rather than inlined context, and what to report. The calling skill writes it. Where the caller assigns an output location per agent (arena candidates, interrogate adversaries, swarm workers), the brief names it.
 - Whether the caller is following poteto-mode for this task. Reading the skill to discuss or edit it does not activate it.
-- The task difficulty: `single` for ordinary work, `strongest` for difficult design, complex root-cause analysis, or consequential review. A change that is hard to reverse (a schema or data migration, a public API or config format, a module rewrite) is `strongest`.
+- The reasoning effort the caller chose for the job, if any, as poteto-mode's Match the model to the job rule sets it.
 
 Use English by default for briefs, questions, replies, status updates, and results exchanged between agents, for both native and Orca dispatches. State this language rule in each brief. Use another language when explicitly requested or needed for the task, and preserve quoted source text. Keep user-facing deliverables in the user's requested language; a Korean user conversation alone does not change the language of internal coordination.
 
@@ -38,13 +38,13 @@ When inactive, do not add a poteto-mode activation instruction. This records the
 
 ### 1. Resolve the entries
 
-Read the role line from the runtime's override sheet (`<config>/pstack-models.md` on Claude Code, `<codex-home>/pstack-models.md` on Codex, as the setup skill resolves them). Without a line, use the default entries in the [Roles](#roles) table. For a `single` or `strongest` role, substitute the host provider's default only when that provider has a row in the Providers table. If no native provider is known or no row exists, keep the Roles table entries and route them through Orca as step 2 prescribes.
+Read the role line from the runtime's override sheet (`<config>/pstack-models.md` on Claude Code, `<codex-home>/pstack-models.md` on Codex, as the setup skill resolves them). Without a line, use the default entries in the [Roles](#roles) table. For a role on the `default`, `strongest`, or `worker` tier, substitute the host provider's model for that tier only when that provider has a row in the Providers table. If no native provider is known or no row exists, keep the Roles table entries and route them through Orca as step 2 prescribes.
 
 An explicit model or agent-count request for this invocation takes precedence over the sheet. Keep the role's mode unchanged. A `panel` role runs one agent per entry, so the panel length sets the count; more agents need an explicit request or a longer override list. A pool is the exception, see below.
 
-With no override, a `strongest` task selects the strongest-role default for each already-selected provider without adding agents. For a `panel` role this swaps every entry for its provider's strongest-role default. Aliases inherit the actual parent model.
+Aliases inherit the actual parent model.
 
-Resolve each dispatch's effort in this order: an effort the user explicitly requests for this invocation, the entry's effort suffix, the sheet's `default effort` line, then the default for the task's tier from the table below. `session` sets no effort, so the dispatch keeps the runtime's setting. A role override changes the model entries, not the tier default.
+Resolve each dispatch's effort in this order: an effort the user explicitly requests for this invocation, the effort the caller chose for the job, the entry's effort suffix, the sheet's `default effort` line, then `session`. `session` sets no effort, so the dispatch keeps the runtime's setting.
 
 Each entry is one of the following, optionally followed by a space and an effort level (`opus@claude @xhigh`). Strip the level before reading the entry.
 
@@ -93,7 +93,7 @@ Prepare every Orca dispatch first: reserve its call directory, write its contrac
 The other dispatches keep running; do not stop them. For the failed one, do not retry silently and do not fall back. Report the attempted command and the error, then ask the user to choose one of:
 
 - Retry the start.
-- Run this dispatch natively on the host provider's single-role default from the Providers table, noting in the result that diversity was reduced.
+- Run this dispatch natively on the host provider's `default` model from the Providers table, noting in the result that diversity was reduced.
 - Drop the dispatch and continue with the rest, noting the dropout.
 - Run this dispatch unsupervised through Orca's agent launch, as orca-delegate's [Unsupervised launch](../orca-delegate/SKILL.md#unsupervised-launch) describes. It keeps the entry's provider and model but has no completion report and cannot take questions.
 
@@ -107,37 +107,27 @@ Native results arrive in the call's response. For an Orca worker, match the comp
 
 ## Roles
 
-Stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). A matching role line in the override sheet replaces the default entries; the mode is fixed per role. The default entries of a `single` or `strongest` role are the `claude` host's. Without a sheet line, substitute the host provider's single-role or strongest-role default only when that provider has a row in the Providers table. If no native provider is known or no row exists, keep the Roles table entries and route them through Orca. A `panel` role keeps its mixed default on every host and runs one agent per entry, except a pool (`arena cross-judge pool`, `trail reviewer pool`), from which the calling skill selects one entry per dispatch under the pool rule in step 1; a `strongest` task swaps each entry for its provider's strongest-role default without adding agents.
-
-| Task tier | Default effort |
-| --- | --- |
-| single | `high` |
-| strongest | `xhigh` |
+Stamped from `plugins/pstack/models.json` (edit there, rerun `tools/generate.mjs`). A matching role line in the override sheet replaces the default entries; the mode is fixed per role. The default entries of a role on the `default`, `strongest`, or `worker` tier are the `claude` host's. Without a sheet line, substitute the host provider's model for the role's tier only when that provider has a row in the Providers table. If no native provider is known or no row exists, keep the Roles table entries and route them through Orca. A `panel` role keeps its mixed default on every host and runs one agent per entry, except a pool (`arena cross-judge pool`, `trail reviewer pool`), from which the calling skill selects one entry per dispatch under the pool rule in step 1.
 
 | Role | Skill | Mode | Tier | Default entries |
 | --- | --- | --- | --- | --- |
-| feature, refactoring | poteto-mode | execute | single | `opus@claude` |
-| bug-fix | poteto-mode | execute | single | `opus@claude` |
-| perf-issue | poteto-mode | execute | single | `opus@claude` |
-| hillclimb | poteto-mode | execute | single | `opus@claude` |
-| judgment and prose | poteto-mode | consult | single | `opus@claude` |
+| feature, refactoring | poteto-mode | execute | default | `opus@claude` |
+| bug-fix | poteto-mode | execute | default | `opus@claude` |
+| perf-issue | poteto-mode | execute | default | `opus@claude` |
+| hillclimb | poteto-mode | execute | default | `opus@claude` |
+| judgment and prose | poteto-mode | consult | default | `opus@claude` |
 | strongest judgment | poteto-mode | execute | strongest | `fable@claude` |
-| how explorer | how | consult | single | `opus@claude` |
-| how explainer | how | consult | single | `opus@claude` |
-| why investigators | why | consult | single | `opus@claude` |
-| why synthesizer | why | consult | single | `opus@claude` |
-| reflect tooling | reflect | consult | single | `opus@claude` |
-| reflect judgment, divergent, synthesizer | reflect | consult | single | `opus@claude` |
-| arena runners | arena | execute | panel | `opus@claude`, `gpt-6.1-sol@codex` |
-| arena cross-judge pool | arena | consult | panel | `opus@claude`, `gpt-6.1-sol@codex` |
-| swarm workers | swarm | execute | single | `opus@claude` |
-| architect runners | architect | consult | panel | `opus@claude`, `gpt-6.1-sol@codex` |
-| interrogate reviewers | interrogate | consult | panel | `opus@claude`, `gpt-6.1-sol@codex` |
-| trail reviewer pool | show-me-your-work | consult | panel | `opus@claude`, `gpt-6.1-sol@codex` |
+| arena runners | arena | execute | panel | `opus@claude`, `gpt-6.2-astra@codex` |
+| arena cross-judge pool | arena | consult | panel | `opus@claude`, `gpt-6.2-astra@codex` |
+| swarm workers | swarm | execute | default | `opus@claude` |
+| interrogate reviewers | interrogate | consult | panel | `opus@claude`, `gpt-6.2-astra@codex` |
+| thermos reviewers | thermos | consult | default | `opus@claude` |
+| no-comments reviewer | no-comments | consult | default | `opus@claude` |
+| trail reviewer pool | show-me-your-work | consult | panel | `opus@claude`, `gpt-6.2-astra@codex` |
 
 ### Providers
 
-| Provider | Native host | Single-role default | Strongest-role default |
-| --- | --- | --- | --- |
-| `claude` | Claude Code | `opus@claude` | `fable@claude` |
-| `codex` | Codex | `gpt-6.1-sol@codex` | `gpt-6-astra@codex` |
+| Provider | Native host | `default` | `strongest` | `worker` |
+| --- | --- | --- | --- | --- |
+| `claude` | Claude Code | `opus@claude` | `fable@claude` | `sonnet@claude` |
+| `codex` | Codex | `gpt-6.2-sol@codex` | `gpt-6.2-astra@codex` | `gpt-6.2-sol@codex` |

@@ -97,11 +97,18 @@ export type FailedCheck = Extract<Check, { readonly kind: "failed" }>;
 export type PendingCheck = Extract<Check, { readonly kind: "pending" }>;
 export interface ReportedChecks {
   readonly kind: "reported";
-  readonly source: "gh-pr-checks" | "graphql-rollup";
+  readonly source: "gh-pr-checks" | "graphql-rollup" | "check-suites";
   readonly checks: NonEmpty<Check>;
 }
 /** `resolveChecks` owns what counts as `no-checks`. */
-export type CheckRead = ReportedChecks | { readonly kind: "no-checks" };
+export type CheckRead =
+  | ReportedChecks
+  | {
+      readonly kind: "no-checks";
+      // Empty, but typed as a Check list so the filters in readSnapshot keep
+      // their type predicates, which `readonly []` loses.
+      readonly checks: readonly Check[] & { readonly length: 0 };
+    };
 export interface CommitRollup {
   readonly oid: string;
   readonly state: RollupState;
@@ -255,7 +262,7 @@ export type QueryFailure =
       readonly detail: string;
     }
   | {
-      readonly kind: "missing-key";
+      readonly kind: "missing-field";
       readonly retryable: true;
       readonly detail: string;
       readonly rawValue?: string;
@@ -457,6 +464,11 @@ export interface GitHubReader {
     after: string | null
   ): Promise<ReviewThreadPage>;
   commitRollups(context: PrContext): Promise<readonly CommitRollup[]>;
+  unsettledSuites(
+    context: PrContext,
+    head: string,
+    checksRead: CheckRead["kind"]
+  ): Promise<readonly Check[]>;
 }
 export interface PollingOptions {
   readonly interval: number;

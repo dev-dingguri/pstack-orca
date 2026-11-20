@@ -134,7 +134,7 @@ function raw(value: unknown): string {
 }
 function missing(path: string, value?: unknown): never {
   throw new WatcherQueryError({
-    kind: "missing-key",
+    kind: "missing-field",
     retryable: true,
     detail:
       value === undefined
@@ -737,8 +737,97 @@ export class GhGitHubReader implements T.GitHubReader {
       };
     });
   }
+  async unsettledSuites(
+    context: T.PrContext,
+    head: string,
+    checksRead: T.CheckRead["kind"]
+  ): Promise<readonly T.Check[]> {
+    return unsettledSuiteChecks(
+      await this.runJson([
+        "gh",
+        "api",
+        "--paginate",
+        "--slurp",
+        `repos/${context.owner}/${context.repo}/commits/${head}/check-suites?per_page=100`,
+      ]),
+      head,
+      checksRead
+    );
+  }
 }
 
+// A fork workflow awaiting approval has a check suite but no check runs, so no
+// check read shows it. An app other than Actions, such as Claude, queues a suite
+// on every push and may never run it. Beside reported checks, the check read
+// shows each suite's runs and hides a run that a later run replaced, so only a
+// suite with no runs that waits for approval or for Actions to start counts.
+export function unsettledSuiteChecks(
+  pages: unknown,
+  head: string,
+  checksRead: T.CheckRead["kind"]
+): T.Check[] {
+  const checks: T.Check[] = [];
+  const slurped = list(pages, "check suite pages");
+  if (slurped.length === 0) missing("check suite pages", slurped);
+  for (const page of slurped) {
+    for (const value of list(at(page, ["check_suites"]), "check_suites")) {
+      const suite = record(value, "check suite");
+      if (string(suite.head_sha, "check suite.head_sha") !== head)
+        missing(
+          "check suite.head_sha must match the queried head",
+          suite.head_sha
+        );
+      const status = string(suite.status, "check suite.status");
+      const conclusion = optionalString(
+        suite.conclusion,
+        "check suite.conclusion"
+      );
+      if (
+        status === "completed" &&
+        ["success", "neutral", "skipped"].includes(conclusion ?? "")
+      )
+        continue;
+      const app = isRecord(suite.app) ? suite.app : {};
+      const idleApp =
+        status === "queued" &&
+        suite.latest_check_runs_count === 0 &&
+        typeof app.slug === "string" &&
+        app.slug !== "github-actions";
+      if (idleApp) continue;
+      const unseen =
+        suite.latest_check_runs_count === 0 &&
+        (conclusion === "action_required" ||
+          (status !== "completed" && app.slug === "github-actions"));
+      if (checksRead === "reported" && !unseen) continue;
+      const details = {
+        name: `${typeof app.name === "string" ? app.name : "Unknown app"} check suite`,
+        link: "",
+        workflow: "",
+      };
+      if (status !== "completed") {
+        checks.push({
+          ...details,
+          kind: "pending",
+          reportedState: status.toUpperCase(),
+          description: "has not finished",
+        });
+        continue;
+      }
+      if (conclusion === null)
+        missing("check suite.conclusion of a completed suite", conclusion);
+      checks.push({
+        ...details,
+        kind: "failed",
+        reportedState: conclusion.toUpperCase(),
+        description:
+          conclusion === "action_required"
+            ? "waits for maintainer approval to run; approve the workflows on the pull request"
+            : `concluded ${conclusion}`,
+      });
+    }
+  }
+  return checks;
+}
 export async function resolveChecks(
   reader: T.GitHubReader,
   context: T.PrContext
@@ -768,7 +857,7 @@ export async function resolveChecks(
   // credential that cannot see checks, and a rollup that exists but maps to no
   // check can hold a context type this reader does not know.
   if (fast.kind === "none-reported" && !headHasRollup)
-    return { kind: "no-checks" };
+    return { kind: "no-checks", checks: [] };
   const suffix =
     fast.kind === "unusable"
       ? `fast path exit=${fast.exitCode}; GraphQL rollup was empty${firstLine(fast.stderr) ? `; ${firstLine(fast.stderr)}` : ""}`

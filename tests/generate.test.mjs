@@ -36,7 +36,6 @@ import {
   fenceUnder,
   loadModels,
   parseFrontmatter,
-  promptStub,
   publicSkills,
   slashCommands,
   regions,
@@ -107,24 +106,19 @@ describe("regions", () => {
   });
 
   test("applyRegions stamps in place and is idempotent", () => {
-    const file = "plugins/pstack/skills/how/SKILL.md";
-    const text = "# how\n\n## Models\n\nstale\n\n## After\nkeep\n\n## Reasoning effort\n";
+    const file = "plugins/pstack/skills/swarm/SKILL.md";
+    const text = "# swarm\n\n## Models\n\nstale\n\n## After\nkeep\n\n## Reasoning effort\n";
     const once = applyRegions(file, text, models);
     expect(once).not.toContain("stale");
     expect(once).toContain("## After\nkeep\n");
-    expect(once).toContain("- how explorer:");
+    expect(once).toContain("- swarm workers:");
     expect(applyRegions(file, once, models)).toBe(once);
   });
 
   test("applyRegions throws when an owned file lost its anchor", () => {
-    expect(() => applyRegions("plugins/pstack/skills/how/SKILL.md", "# how\n\n## Reasoning effort\n", models)).toThrow(
-      "plugins/pstack/skills/how/SKILL.md: no anchor for the Models section to stamp",
+    expect(() => applyRegions("plugins/pstack/skills/swarm/SKILL.md", "# swarm\n\n## Reasoning effort\n", models)).toThrow(
+      "plugins/pstack/skills/swarm/SKILL.md: no anchor for the Models section to stamp",
     );
-  });
-
-  test("a policy without the interrogate reviewers role throws naming it", () => {
-    const roles = models.roles.filter((r) => r.role !== "interrogate reviewers");
-    expect(() => regions({ ...models, roles })).toThrow('models.json: no "interrogate reviewers" role');
   });
 
   test("applyRegions leaves a file the generator does not own untouched", () => {
@@ -144,8 +138,8 @@ describe("runtime model names", () => {
 
 describe("strayModelSlugs", () => {
   test("a slug inside an owned region is exempt", () => {
-    const file = "plugins/pstack/skills/how/SKILL.md";
-    const text = applyRegions(file, "# how\n\n## Models\n\nx\n\n## Reasoning effort\n", models);
+    const file = "plugins/pstack/skills/swarm/SKILL.md";
+    const text = applyRegions(file, "# swarm\n\n## Models\n\nx\n\n## Reasoning effort\n", models);
     expect(strayModelSlugs(file, text, models)).toEqual([]);
   });
 
@@ -157,8 +151,8 @@ describe("strayModelSlugs", () => {
   });
 
   test("a slug outside the owned region of an owned file is a stray", () => {
-    const file = "plugins/pstack/skills/how/SKILL.md";
-    const text = applyRegions(file, "# how\n\n## Models\n\nx\n\n## Setup\n\nPrefer claude-sonnet-4-6.\n\n## Reasoning effort\n", models);
+    const file = "plugins/pstack/skills/swarm/SKILL.md";
+    const text = applyRegions(file, "# swarm\n\n## Models\n\nx\n\n## Setup\n\nPrefer claude-sonnet-4-6.\n\n## Reasoning effort\n", models);
     const strays = strayModelSlugs(file, text, models);
     expect(strays).toHaveLength(1);
     expect(strays[0]).toContain("Prefer claude-sonnet-4-6.");
@@ -295,12 +289,9 @@ describe("assertChangesHeading", () => {
 describe("slashCommands", () => {
   const reference = (rows) => `# R\n\n| command | use it when |\n| --- | --- |\n${rows.join("\n")}\n\nafter\n`;
 
-  test("reads name and menu text in row order", () => {
+  test("reads names in row order", () => {
     const text = reference(["| `/b` | second thing |", "| `/a` | first thing |"]);
-    expect(slashCommands(text, ["a", "b"])).toEqual([
-      { name: "b", menu: "second thing" },
-      { name: "a", menu: "first thing" },
-    ]);
+    expect(slashCommands(text, ["a", "b"])).toEqual([{ name: "b" }, { name: "a" }]);
   });
 
   test("names a skill without a row and a row without a skill", () => {
@@ -312,37 +303,6 @@ describe("slashCommands", () => {
   test("rejects a malformed row and a missing table", () => {
     expect(() => slashCommands(reference(["| /a | x |"]), ["a"])).toThrow("row 1 is not");
     expect(() => slashCommands("# R\n\nno table\n", ["a"])).toThrow("table header not found");
-  });
-
-  test("rejects menu text that the prompt's YAML frontmatter would not read back, naming file and row", () => {
-    expect(() => slashCommands(reference(["| `/a` | fine |", "| `/b` | fix CI: then ship |"]), ["a", "b"])).toThrow(
-      "docs/reference.md: slash-command row 2 text is not a plain YAML value",
-    );
-    const samples = [
-      "fix CI: then ship",
-      "run it # carefully",
-      "ends with colon:",
-      "`/x` first",
-      "*star",
-      "[a] b",
-      "- item",
-      "a:b ratio, issue#12, [x] {y}",
-      "-mode skill",
-      "monitor an open PR, fix CI/comments, keep it merge-ready",
-    ];
-    for (const menu of samples) {
-      let parsed;
-      try {
-        parsed = Bun.YAML.parse(promptStub({ name: "b", menu }, RUNTIMES[0]).split("---\n")[1]).description;
-      } catch {}
-      let accepted = true;
-      try {
-        slashCommands(reference([`| \`/b\` | ${menu} |`]), ["b"]);
-      } catch {
-        accepted = false;
-      }
-      expect({ menu, accepted }).toEqual({ menu, accepted: parsed === menu });
-    }
   });
 
   test("the live reference names exactly the public skills, poteto-mode first", () => {
@@ -426,24 +386,29 @@ describe("deriveSkill", () => {
   });
 
   test("appends and stamps a Models section when upstream has none", () => {
-    const out = deriveSkill("plugins/pstack/skills/how/SKILL.md", front("disable-model-invocation: true\n"), models, leads);
+    const out = deriveSkill("plugins/pstack/skills/swarm/SKILL.md", front("disable-model-invocation: true\n"), models, leads);
     expect(out.endsWith("body\n\n## Models\n\nRole defaults, stamped from")).toBe(false);
     expect(out).toContain("body\n\n## Models\n\nRole defaults, stamped from");
-    expect(out).toContain("- how explorer:");
+    expect(out).toContain("- swarm workers:");
     expect(out.endsWith("\n")).toBe(true);
-    expect(deriveSkill("plugins/pstack/skills/how/SKILL.md", out, models, leads)).toBe(out);
+    expect(deriveSkill("plugins/pstack/skills/swarm/SKILL.md", out, models, leads)).toBe(out);
   });
 
   test("leaves a region whose anchor upstream lacks unstamped instead of throwing", () => {
-    const text = front("disable-model-invocation: true\n") + "no reviewer table here\n";
-    const out = deriveSkill("plugins/pstack/skills/interrogate/SKILL.md", text, models, leads);
-    expect(out.startsWith(front("", "interrogate") + "no reviewer table here\n")).toBe(true);
-    expect(out).not.toContain("| Reviewer A");
-    expect(out).toContain("\n## Reasoning effort\n\nA role value in");
+    const text = front("disable-model-invocation: true\n") + "no override sheet here\n";
+    const out = deriveSkill("plugins/pstack/skills/setup-pstack/SKILL.md", text, models, leads);
+    expect(out).toBe(front("", "setup-pstack") + "no override sheet here\n");
+  });
+
+  test("appends and stamps interrogate's Models section with the reviewer panel", () => {
+    const out = deriveSkill("plugins/pstack/skills/interrogate/SKILL.md", front("disable-model-invocation: true\n"), models, leads);
+    expect(out).toContain("body\n\n## Models\n\nRole defaults, stamped from");
+    expect(out).toContain("- interrogate reviewers:");
+    expect(out.indexOf("## Models")).toBeLessThan(out.indexOf("## Reasoning effort"));
   });
 
   test("appends the Reasoning effort section after the Models section", () => {
-    const out = deriveSkill("plugins/pstack/skills/how/SKILL.md", front("disable-model-invocation: true\n"), models, leads);
+    const out = deriveSkill("plugins/pstack/skills/swarm/SKILL.md", front("disable-model-invocation: true\n"), models, leads);
     expect(out.indexOf("## Models")).toBeLessThan(out.indexOf("## Reasoning effort"));
     expect(out).toContain("`effort` on the Claude Code `Agent` call");
   });
@@ -497,6 +462,12 @@ describe("lead lines", () => {
     );
   });
 
+  test("poteto-mode's Platform Adaptation sentence points at every runtime's mapping in RUNTIMES order", () => {
+    const text = readFileSync(join(repoRoot, "plugins/pstack/skills/poteto-mode/SKILL.md"), "utf8");
+    const pointers = [...text.matchAll(/On ([^,.]+), read \[`references\/([^`]+)`\]/g)].map(([, name, mapping]) => [name, mapping]);
+    expect(pointers).toEqual(RUNTIMES.map((r) => [r.name, r.mapping]));
+  });
+
   test("a notes table lists its skills in row order and rejects a row without one", () => {
     const table = (...rows) => ["| Skill | On Codex |", "|-------|-------|", ...rows, "", "after"].join("\n");
     expect(noteSkills(codex, table("| `how` | fan-out |", "| `teach` | images |"))).toEqual(["how", "teach"]);
@@ -504,26 +475,6 @@ describe("lead lines", () => {
     expect(() => noteSkills(codex, "no table\n")).toThrow('"| Skill | On Codex |" table header not found');
   });
 
-  test("a prompt stub points at its runtime's mapping file unless its skill carries that runtime's preamble", () => {
-    const pointer = "through `poteto-mode/references/codex-tools.md`, including its Per-skill notes.";
-    expect(promptStub({ name: "tdd", menu: "m" }, codex, { preamble: false })).toContain(pointer);
-    expect(promptStub({ name: "how", menu: "m" }, codex, { preamble: true })).toBe(
-      "---\nname: how\ndescription: m\ndisable-model-invocation: true\n---\n\nInvoke the `how` skill and follow it.\n",
-    );
-  });
-
-  test("a prompt stub repeats the codex-tools.md pointer only when its skill lacks the stamped preamble", () => {
-    const { files } = plan(repoRoot);
-    const stubs = Object.keys(files).filter((rel) => rel.startsWith("plugins/pstack/.codex-plugin/prompts/"));
-    const pointsAtMapping = (rel) => files[rel].includes("codex-tools.md");
-    const carriesPreamble = (rel) => {
-      const skill = `plugins/pstack/skills/${basename(rel, ".md")}/SKILL.md`;
-      return readFileSync(join(repoRoot, skill), "utf8").includes("On Codex, read the [platform mapping]");
-    };
-    expect(stubs.filter(carriesPreamble).length).toBeGreaterThan(0);
-    expect(stubs.filter((rel) => !carriesPreamble(rel)).length).toBeGreaterThan(0);
-    for (const rel of stubs) expect({ rel, points: pointsAtMapping(rel) }).toEqual({ rel, points: !carriesPreamble(rel) });
-  });
 });
 
 describe("effort section", () => {
@@ -537,13 +488,17 @@ describe("effort section", () => {
     expect(existsSync(join(pluginRoot, "effort-agents"))).toBe(false);
   });
 
-  test("the stamped section names every level, the task-tier default, and the effort field of Claude Code and Codex", () => {
-    const text = effortSection(["low", "max"]);
-    for (const level of ["low", "max"]) expect(text).toContain(`\`${level}\``);
-    expect(text).toContain("the task tier's default effort from the **run-role** skill's Roles section");
+  test("the stamped section names every level, the default, and the effort field of Claude Code and Codex", () => {
+    const text = effortSection(["low", "max"], "high");
+    for (const level of ["low", "max", "high"]) expect(text).toContain(`\`${level}\``);
     expect(text).toContain("`effort` on the Claude Code `Agent` call");
     expect(text).toContain("`reasoning_effort`");
     expect(text).not.toContain("effort-<level>");
+  });
+
+  test("session effort outside Claude Code defers to the platform mapping", () => {
+    const text = effortSection(["low", "max"], "session");
+    expect(text).toContain("On other runtimes, follow the platform mapping for `session`");
   });
 });
 
@@ -565,7 +520,7 @@ describe("plan, changes, apply", () => {
   };
   const snapshot = (dir) => Object.fromEntries(walk(dir).map((path) => [path, readFileSync(path, "utf8")]));
   const quiet = { log: () => {} };
-  const STUB = "plugins/pstack/.codex-plugin/prompts/tdd.md";
+  const PLANNED = "plugins/pstack/skills/poteto-mode/references/licenses/LICENSE";
   const STRAY = "plugins/pstack/skills/poteto-mode/references/agents/stray.md";
 
   test("the working tree is what the plan says", () => {
@@ -574,27 +529,27 @@ describe("plan, changes, apply", () => {
 
   test("plan computes from the sources, repeats itself, and writes nothing", () => {
     const root = repoCopy();
-    const current = readFileSync(join(root, STUB), "utf8");
-    writeFileSync(join(root, STUB), "stale\n");
+    const current = readFileSync(join(root, PLANNED), "utf8");
+    writeFileSync(join(root, PLANNED), "stale\n");
     writeFileSync(join(root, STRAY), "orphan\n");
     const before = snapshot(root);
     const first = plan(root);
     expect(plan(root)).toEqual(first);
-    expect(first.files[STUB]).toBe(current);
+    expect(first.files[PLANNED]).toBe(current);
     expect(Object.hasOwn(first.files, STRAY)).toBe(false);
     expect(snapshot(root)).toEqual(before);
   });
 
   test("--check on a stale tree exits 1 naming each stale path, writes nothing, and passes once regenerated", () => {
     const root = repoCopy();
-    writeFileSync(join(root, STUB), "stale\n");
+    writeFileSync(join(root, PLANNED), "stale\n");
     writeFileSync(join(root, STRAY), "orphan\n");
     const before = snapshot(root);
     const run = (...args) => spawnSync(process.execPath, [join(root, "tools/generate.mjs"), ...args], { encoding: "utf8" });
     const stale = run("--check");
     expect(stale.status).toBe(1);
     expect(stale.stderr).toContain(
-      `FAIL: generated output is stale; run bun tools/generate.mjs:\n  write: ${STUB}\n  remove: ${STRAY}\n`,
+      `FAIL: generated output is stale; run bun tools/generate.mjs:\n  write: ${PLANNED}\n  remove: ${STRAY}\n`,
     );
     expect(snapshot(root)).toEqual(before);
     expect(run().status).toBe(0);
@@ -604,15 +559,15 @@ describe("plan, changes, apply", () => {
   test("apply rewrites only the files whose bytes differ", () => {
     const root = repoCopy();
     const intended = plan(root);
-    writeFileSync(join(root, STUB), "stale\n");
+    writeFileSync(join(root, PLANNED), "stale\n");
     const past = new Date("2001-01-01T00:00:00Z");
     for (const path of Object.keys(intended.files)) utimesSync(join(root, path), past, past);
-    expect(apply(root, intended, quiet)).toEqual([{ kind: "write", path: STUB }]);
-    expect(readFileSync(join(root, STUB), "utf8")).toBe(intended.files[STUB]);
+    expect(apply(root, intended, quiet)).toEqual([{ kind: "write", path: PLANNED }]);
+    expect(readFileSync(join(root, PLANNED), "utf8")).toBe(intended.files[PLANNED]);
     const touched = Object.keys(intended.files).filter(
       (path) => statSync(join(root, path)).mtimeMs !== past.getTime(),
     );
-    expect(touched).toEqual([STUB]);
+    expect(touched).toEqual([PLANNED]);
   });
 
   test("apply writes each planned file and removes every other entry in an owned directory", () => {
@@ -749,7 +704,7 @@ describe("plan, changes, apply", () => {
 
   test("plan converges a duplicated lead line, so --check flags the file as stale", () => {
     const root = repoCopy();
-    const file = "plugins/pstack/skills/how/SKILL.md";
+    const file = "plugins/pstack/skills/swarm/SKILL.md";
     const original = readFileSync(join(root, file), "utf8");
     expect(original).toContain(`\n\n${codex.preamble}\n`);
     writeFileSync(join(root, file), original.replace(`\n\n${codex.preamble}\n`, `\n\n${codex.preamble}\n${codex.preamble}\n`));
@@ -760,13 +715,13 @@ describe("plan, changes, apply", () => {
 
   test("two producers on one path compose", () => {
     const root = repoCopy();
-    const skill = "plugins/pstack/skills/how/SKILL.md";
+    const skill = "plugins/pstack/skills/swarm/SKILL.md";
     const text = (rel) => readFileSync(join(root, rel), "utf8");
     writeFileSync(
       join(root, skill),
       text(skill)
         .replace(`\n\n${leads.get(skill)[0]}\n`, "\n")
-        .replace(/^- how explorer: .*$/m, "- how explorer: stale"),
+        .replace(/^- swarm workers: .*$/m, "- swarm workers: stale"),
     );
     const { files } = plan(root);
     expect(files[skill]).toBe(readFileSync(join(repoRoot, skill), "utf8"));
@@ -780,6 +735,14 @@ describe("plan, changes, apply", () => {
     } finally {
       PORTABLE_ASSETS.pop();
     }
+  });
+
+  test("plan copies the root LICENSE to the plugin root, so an edited license leaves the plugin copy stale", () => {
+    const root = repoCopy();
+    append(root, "LICENSE", "\nAmended.\n");
+    const intended = plan(root);
+    expect(intended.files["plugins/pstack/LICENSE"]).toBe(readFileSync(join(root, "LICENSE"), "utf8"));
+    expect(changes(root, intended)).toContainEqual({ kind: "write", path: "plugins/pstack/LICENSE" });
   });
 
   test.each(RUNTIMES.map((runtime) => [runtime.name, runtime]))("a %s per-skill note for a skill that does not exist fails", (_, runtime) => {
@@ -816,6 +779,19 @@ describe("plan, changes, apply", () => {
     for (const failure of failures) expect(check.stderr).toContain(`FAIL: ${failure}\n`);
   });
 
+  test("a public skill without a slash-command row fails both runs, and the write run writes nothing", () => {
+    const root = repoCopy();
+    const reference = join(root, "docs/reference.md");
+    writeFileSync(reference, readFileSync(reference, "utf8").replace(/^\| `\/tdd` \|.*\n/m, ""));
+    writeFileSync(join(root, PLANNED), "stale\n");
+    for (const args of [["--check"], []]) {
+      const run = generate(root, ...args);
+      expect(run.status).toBe(1);
+      expect(run.stderr).toContain("slash-command table is out of sync with the public skills; skill without a row: tdd");
+    }
+    expect(readFileSync(join(root, PLANNED), "utf8")).toBe("stale\n");
+  });
+
   test("a write run regenerates before it validates, so a slug left only in a stale copy passes", () => {
     const root = repoCopy();
     const copy = "plugins/pstack/skills/poteto-mode/references/agents/comment-sicko.md";
@@ -830,12 +806,12 @@ describe("plan, changes, apply", () => {
     const root = repoCopy();
     const outside = join(scratch("pstack-outside-"), "target.md");
     writeFileSync(outside, "original");
-    rmSync(join(root, STUB));
-    symlinkSync(outside, join(root, STUB));
+    rmSync(join(root, PLANNED));
+    symlinkSync(outside, join(root, PLANNED));
     append(root, ...STRAY_SLUG);
     const check = generate(root, "--check");
     expect(check.status).toBe(1);
-    expect(check.stderr).toContain(`FAIL: ${STUB} is a symlink; the generator never writes through one\n`);
+    expect(check.stderr).toContain(`FAIL: ${PLANNED} is a symlink; the generator never writes through one\n`);
     expect(check.stderr).toContain("FAIL: model names outside generator-owned regions");
     expect(readFileSync(outside, "utf8")).toBe("original");
   });

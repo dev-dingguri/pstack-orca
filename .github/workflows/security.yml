@@ -19,6 +19,7 @@ jobs:
   osv-scan:
     name: OSV vulnerability scan
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       # persist-credentials: false on every checkout — nothing here needs git
       # auth after the clone, and a stored token can leak via artifacts.
@@ -30,7 +31,7 @@ jobs:
       #
       # Do not add --include-git-root. With it the checkout's .git counts as a
       # package, so a scan that finds no lockfile exits 0. Without it that scan
-      # exits 128 and fails the step, and both bun.lock files are still scanned.
+      # exits 128 and fails the step, and every bun.lock file is still scanned.
       #
       # The v2.5.1 tag is mutable, so the digest is what actually pins this.
       # Resolved with: docker buildx imagetools inspect ghcr.io/google/osv-scanner:v2.5.1
@@ -43,6 +44,7 @@ jobs:
   zizmor:
     name: Workflow static analysis
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -54,7 +56,7 @@ jobs:
       # which this repo does not have; annotations put findings on the diff
       # instead. version defaults to "latest" — pinned so a zizmor release
       # cannot change what this gate means.
-      - uses: zizmorcore/zizmor-action@cc914d7f3750a2d13d75c7f184a1060aa0e9d482 # v0.6.4
+      - uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
         with:
           version: "1.29.0"
           advanced-security: false

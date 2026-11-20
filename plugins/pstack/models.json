@@ -3,15 +3,14 @@
     "default": "opus",
     "strongest": "fable",
     "worker": "sonnet",
-    "panel": ["opus"]
+    "panel": ["opus", "fable", "sonnet", "haiku"]
   },
   "efforts": ["low", "medium", "high", "xhigh", "max"],
   "defaultEffort": "session",
-  "taskEffort": { "single": "high", "strongest": "xhigh" },
   "available": ["opus", "fable", "sonnet", "haiku"],
   "providers": [
     { "id": "claude", "label": "Claude", "host": "Claude Code" },
-    { "id": "codex", "label": "Codex", "host": "Codex", "block": "codex", "available": ["gpt-6-astra", "gpt-6.1-sol", "gpt-6-sol", "gpt-6-luna", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"] }
+    { "id": "codex", "label": "Codex", "host": "Codex", "block": "codex", "available": ["gpt-6.2-astra", "gpt-6.2-sol", "gpt-6.1-terra", "gpt-6-luna"] }
   ],
   "roles": [
     { "role": "feature, refactoring", "models": "default", "skill": "poteto-mode", "mode": "execute" },
@@ -20,23 +19,18 @@
     { "role": "hillclimb", "models": "default", "skill": "poteto-mode", "mode": "execute" },
     { "role": "judgment and prose", "models": "default", "skill": "poteto-mode", "mode": "consult" },
     { "role": "strongest judgment", "models": "strongest", "skill": "poteto-mode", "mode": "execute" },
-    { "role": "how explorer", "models": "default", "skill": "how", "mode": "consult" },
-    { "role": "how explainer", "models": "default", "skill": "how", "mode": "consult" },
-    { "role": "why investigators", "models": "default", "skill": "why", "mode": "consult" },
-    { "role": "why synthesizer", "models": "default", "skill": "why", "mode": "consult" },
-    { "role": "reflect tooling", "models": "default", "skill": "reflect", "mode": "consult" },
-    { "role": "reflect judgment, divergent, synthesizer", "models": "default", "skill": "reflect", "mode": "consult" },
     { "role": "arena runners", "models": "panel", "skill": "arena", "mode": "execute" },
     { "role": "arena cross-judge pool", "models": "panel", "skill": "arena", "mode": "consult" },
     { "role": "swarm workers", "models": "default", "skill": "swarm", "mode": "execute" },
-    { "role": "architect runners", "models": "panel", "skill": "architect", "mode": "consult" },
     { "role": "interrogate reviewers", "models": "panel", "skill": "interrogate", "mode": "consult" },
+    { "role": "thermos reviewers", "models": "default", "skill": "thermos", "mode": "consult" },
+    { "role": "no-comments reviewer", "models": "default", "skill": "no-comments", "mode": "consult" },
     { "role": "trail reviewer pool", "models": "panel", "skill": "show-me-your-work", "mode": "consult" }
   ],
   "codex": {
-    "default": "gpt-6.1-sol",
-    "strongest": "gpt-6-astra",
-    "worker": "gpt-6-sol",
-    "panel": ["gpt-6.1-sol"]
+    "default": "gpt-6.2-sol",
+    "strongest": "gpt-6.2-astra",
+    "worker": "gpt-6.2-sol",
+    "panel": ["gpt-6.2-astra", "gpt-6.2-sol", "gpt-6.1-terra", "gpt-6-luna"]
   }
 }

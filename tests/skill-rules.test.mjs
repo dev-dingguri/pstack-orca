@@ -12,6 +12,21 @@ const skillsDir = fileURLToPath(new URL("../plugins/pstack/skills", import.meta.
 
 const rules = [
   {
+    source: "#331 Codex session effort with an explicit model",
+    file: "poteto-mode/references/codex-tools.md",
+    phrase: "pass the final level as `reasoning_effort`",
+  },
+  {
+    source: "#331 unknown Codex session effort",
+    file: "poteto-mode/references/codex-tools.md",
+    phrase: "Do not substitute an omitted `reasoning_effort` for the missing starting level.",
+  },
+  {
+    source: "#331 resolve active Codex effort before dispatch",
+    file: "poteto-mode/references/codex-tools.md",
+    phrase: "run `node <poteto-mode-dir>/scripts/codex-session-effort.mjs` before dispatching",
+  },
+  {
     source: "#71 callable driver policy",
     file: "poteto-mode/SKILL.md",
     phrase: "fall back to `run` when the repo has none",
@@ -55,6 +70,16 @@ const rules = [
     source: "#229 parallel sessions keep separate todolists",
     file: "poteto-mode/SKILL.md",
     phrase: "When several sessions share the checkout, name it `.audit/<task-slug>.todo.md`",
+  },
+  {
+    source: "#387 desktop app plan tool is named",
+    file: "poteto-mode/SKILL.md",
+    phrase: "In the Claude desktop app, `mcp__ccd_turn__update_plan` asks for items of about seven words.",
+  },
+  {
+    source: "#387 desktop app keeps the verbatim checklist",
+    file: "poteto-mode/SKILL.md",
+    phrase: "keep this checklist as well, with the playbook steps verbatim and each `skip: <reason>` line",
   },
   {
     source: "#58 stop before you re-delegate",
@@ -119,7 +144,7 @@ const rules = [
   {
     source: "autopilot verify loop: only findings the diff causes go back",
     file: "poteto-mode/playbooks/autopilot-full.md",
-    phrase: "A defect trunk shows without the PR is recorded against trunk and does not gate the PR",
+    phrase: "A problem the PR's base already has, whether trunk or the PR below it in a stack, doesn't block unless the PR copies it or newly reaches it.",
   },
   {
     source: "autopilot verify loop: bounded rounds",
@@ -142,14 +167,29 @@ const rules = [
     phrase: "Record `BLOCKED: independent review` in the todolist",
   },
   {
-    source: "#231 reflect digest carries no verdict",
-    file: "reflect/SKILL.md",
-    phrase: "It states no diagnosis, verdict, or cause.",
+    source: "backnotprop/pstack#14 an outside rule nobody can check is held, not deleted",
+    file: "poteto-mode/references/agents/comment-sicko.md",
+    phrase: "the comment stays put as a `HOLD`, the one case where doubt is not meat",
   },
   {
-    source: "#231 reflect adds nothing beside the transcript path",
-    file: "reflect/SKILL.md",
-    phrase: "Add nothing beside a transcript path",
+    source: "backnotprop/pstack#14 a kill of an outside rule cites its evidence",
+    file: "poteto-mode/references/agents/comment-sicko.md",
+    phrase: "dies, and the kill cites the page or file",
+  },
+  {
+    source: "backnotprop/pstack#14 the parent keeps each HOLD",
+    file: "no-comments/SKILL.md",
+    phrase: "and where to check it is not an ambiguous keep. Leave it in place and report it open.",
+  },
+  {
+    source: "backnotprop/pstack#14 a second rejection keeps the accepted findings",
+    file: "no-comments/SKILL.md",
+    phrase: "fail `/no-comments` for that report's rejected findings, not for the run.",
+  },
+  {
+    source: "backnotprop/pstack#14 an outside-rule kill needs a refuting citation",
+    file: "no-comments/SKILL.md",
+    phrase: "unless the report cites a documentation page or source file that refutes the rule",
   },
   {
     source: "pstack-orca run-role is the dispatch seam",
@@ -197,39 +237,19 @@ const rules = [
     phrase: "through the **run-role** skill with role `swarm workers`",
   },
   {
-    source: "pstack-orca architect runners through run-role",
-    file: "architect/SKILL.md",
-    phrase: "through the **run-role** skill with role `architect runners`",
+    source: "pstack-orca thermos reviewers through run-role",
+    file: "thermos/SKILL.md",
+    phrase: "through the **run-role** skill with role `thermos reviewers`",
   },
   {
-    source: "pstack-orca interrogate reviewers through run-role",
-    file: "interrogate/SKILL.md",
-    phrase: "through the **run-role** skill with role `interrogate reviewers`",
+    source: "pstack-orca no-comments reviewer through run-role",
+    file: "no-comments/SKILL.md",
+    phrase: "through the **run-role** skill with role `no-comments reviewer`",
   },
   {
-    source: "pstack-orca how explorers through run-role",
-    file: "how/SKILL.md",
-    phrase: "through the **run-role** skill with role `how explorer`",
-  },
-  {
-    source: "pstack-orca why investigators through run-role",
-    file: "why/SKILL.md",
-    phrase: "through the **run-role** skill with role `why investigators`",
-  },
-  {
-    source: "pstack-orca reflect reviewers through run-role",
-    file: "reflect/SKILL.md",
-    phrase: "three dispatches through the **run-role** skill",
-  },
-  {
-    source: "pstack-orca architect overrides arena's runner role",
+    source: "pstack-orca arena families are providers",
     file: "arena/SKILL.md",
-    phrase: "When the calling skill names another role for the runners (architect passes `architect runners`), resolve that role instead of `arena runners`",
-  },
-  {
-    source: "pstack-orca interrogate never substitutes a rejected model automatically",
-    file: "interrogate/SKILL.md",
-    phrase: "Do not substitute automatically.",
+    phrase: "Families are providers, as run-role's family rule defines them.",
   },
   {
     source: "pstack-orca no silent fallback",

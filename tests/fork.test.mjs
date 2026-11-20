@@ -1,14 +1,14 @@
 // The pstack-orca layer over the port's model policy: providers, modes, the
-// one-entry-per-provider panel, pools, task-tier efforts, and the rendering of
-// every role entry as model@provider.
+// one-entry-per-provider panel, pools, and the rendering of every role entry
+// as model@provider.
 
 import { describe, expect, test } from "bun:test";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { fanOutSkills, panelSkills, poolRoles, roleEntries } from "../tools/fork.mjs";
-import { loadModels, overrideSheetBlock, parseModels, rolesSection, strayModelSlugs } from "../tools/generate.mjs";
+import { fanOutSkills, overrideSheetBlock, poolRoles, roleEntries, rolesSection } from "../tools/fork.mjs";
+import { loadModels, parseModels, strayModelSlugs } from "../tools/generate.mjs";
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 const raw = JSON.parse(readFileSync(join(repoRoot, "plugins/pstack/models.json"), "utf8"));
@@ -16,40 +16,43 @@ const models = loadModels();
 const role = (label) => models.roles.find((r) => r.role === label);
 
 describe("provider panel", () => {
-  test("design candidates and reviewers run one entry per provider", () => {
+  test("candidates and adversaries run the first panel entry of each provider", () => {
     const panelLine = `${raw.tiers.panel[0]}@claude, ${raw.codex.panel[0]}@codex`;
     const assignments = overrideSheetBlock(models).split("\n").filter((line) => /^[a-z][^:]*: /.test(line));
-    for (const label of ["architect runners", "interrogate reviewers", "arena runners"]) {
+    for (const label of ["interrogate reviewers", "arena runners"]) {
       expect(assignments).toContain(`${label}: ${panelLine}`);
       expect(rolesSection(models)).toMatch(new RegExp(`\\| ${label} \\| \\w+ \\| \\w+ \\| panel \\|`));
     }
-    expect(panelSkills(models).sort()).toEqual(["architect", "arena", "interrogate", "show-me-your-work"]);
-    expect(fanOutSkills(models).sort()).toEqual(["architect", "arena", "interrogate"]);
+    expect(fanOutSkills(models).sort()).toEqual(["arena", "interrogate"]);
     expect(poolRoles(models).map((r) => r.role)).toEqual(["arena cross-judge pool", "trail reviewer pool"]);
   });
 
-  test("single-model roles default to the claude host and keep the fork's tiers", () => {
+  test("single-model roles default to the claude host on their tier", () => {
     for (const label of ["feature, refactoring", "bug-fix", "perf-issue", "hillclimb"]) {
-      expect(roleEntries(models, role(label))).toEqual([`${raw.tiers.default}@claude`]);
+      expect(roleEntries(models, role(label))).toEqual([`${raw.tiers[role(label).tier]}@claude`]);
     }
-    expect(models.roles.filter((r) => r.tier === "strongest").map((r) => r.role)).toEqual(["strongest judgment"]);
     expect(roleEntries(models, role("strongest judgment"))).toEqual([`${raw.tiers.strongest}@claude`]);
-    expect(models.roles.some((r) => r.tier === "worker")).toBe(false);
   });
 
-  test("the Providers table names each host's single-role and strongest-role defaults", () => {
+  test("the Providers table names each host's model per single-model tier", () => {
     const section = rolesSection(models);
-    expect(section).toContain(`| \`claude\` | Claude Code | \`${raw.tiers.default}@claude\` | \`${raw.tiers.strongest}@claude\` |`);
-    expect(section).toContain(`| \`codex\` | Codex | \`${raw.codex.default}@codex\` | \`${raw.codex.strongest}@codex\` |`);
-    expect(section).toContain(`| single | \`${raw.taskEffort.single}\` |`);
-    expect(section).toContain(`| strongest | \`${raw.taskEffort.strongest}\` |`);
+    const row = (id, host, tiers) =>
+      `| \`${id}\` | ${host} | ${["default", "strongest", "worker"].map((t) => `\`${tiers[t]}@${id}\``).join(" | ")} |`;
+    expect(section).toContain(row("claude", "Claude Code", raw.tiers));
+    expect(section).toContain(row("codex", "Codex", raw.codex));
+  });
+
+  test("no rule swaps a role to the strongest model or sets effort by task difficulty", () => {
+    const runRole = readFileSync(join(repoRoot, "plugins/pstack/skills/run-role/SKILL.md"), "utf8");
+    expect(raw).not.toHaveProperty("taskEffort");
+    expect(runRole).not.toMatch(/`strongest` (task|review)|task difficulty|Task tier/);
   });
 });
 
 describe("override sheet", () => {
-  test("carries no default effort line, so the task-tier defaults apply", () => {
+  test("writes the port's default effort line and session hook line", () => {
     const sheet = overrideSheetBlock(models);
-    expect(sheet).not.toMatch(/^default effort:/m);
+    expect(sheet).toContain(`\ndefault effort: ${raw.defaultEffort}\n`);
     expect(sheet).toContain("opus@claude @xhigh");
     expect(sheet).toMatch(/\nsession hook: on$/);
   });
@@ -89,10 +92,6 @@ describe("checkFork", () => {
     expect(parse((p) => (p.codex.default = "gpt-0-missing"))).toThrow('names "gpt-0-missing", which provider "codex" does not list');
   });
 
-  test("rejects a task-tier effort that is not a level", () => {
-    expect(parse((p) => (p.taskEffort.strongest = "huge"))).toThrow('taskEffort "strongest" is not an effort level');
-  });
-
   test("rejects a provider list that is not exactly claude and codex", () => {
     const exactly = '"providers" must list exactly "claude" and "codex"';
     expect(parse((p) => (p.providers[0].id = "anthropic"))).toThrow(exactly);
@@ -113,20 +112,21 @@ describe("checkFork", () => {
 
 describe("stray Codex model IDs", () => {
   const file = "plugins/pstack/skills/other/SKILL.md";
+  const [a, b] = [raw.codex.default, raw.codex.strongest];
 
   test("a listed Codex model outside an owned region is a stray, an unlisted one is not", () => {
-    expect(strayModelSlugs(file, "# o\n\nPrefer gpt-5.6-sol here.\n", models)).toHaveLength(1);
+    expect(strayModelSlugs(file, `# o\n\nPrefer ${a} here.\n`, models)).toHaveLength(1);
     expect(strayModelSlugs(file, "# o\n\nwe renamed `gpt-4` to `gpt-4o`\n", models)).toEqual([]);
   });
 
   test("a listed Codex model followed by sentence punctuation or a provider tag is a stray", () => {
-    for (const text of ["Prefer gpt-5.6-sol.", "Prefer gpt-6-astra. Then review.", "Use gpt-6.1-sol@codex."]) {
+    for (const text of [`Prefer ${a}.`, `Prefer ${b}. Then review.`, `Use ${a}@codex.`]) {
       expect(strayModelSlugs(file, text, models)).toEqual([`${file}:1: ${text}`]);
     }
   });
 
   test("a listed Codex model inside a longer model name is not a stray", () => {
-    for (const text of ["gpt-5.6-sol-mini", "gpt-5.6-sol.preview", "gpt-5.6-sol.1", "custom-gpt-5.6-sol"]) {
+    for (const text of [`${a}-mini`, `${a}.preview`, `${a}.1`, `custom-${a}`]) {
       expect(strayModelSlugs(file, text, models)).toEqual([]);
     }
   });

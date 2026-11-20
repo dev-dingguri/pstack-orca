@@ -4,13 +4,13 @@ Start with the [README](../README.md) for installation and your first task.
 
 ## Multi-provider roles
 
-Every role in [models.json](../plugins/pstack/models.json) resolves to entries of the form `model@provider`, where `model` is a Claude family name (`opus`) or a Codex model ID (`gpt-6.1-sol`). An entry may add a reasoning effort after a space, as in `opus@claude @xhigh`. The host provider is `claude` on Claude Code and `codex` on Codex. The [run-role skill](../plugins/pstack/skills/run-role/SKILL.md) dispatches each entry: a host-provider entry becomes a native subagent, and any other entry becomes a supervised Orca worker through the bundled [orca-delegate skill](../plugins/pstack/skills/orca-delegate/SKILL.md). Each role has a fixed mode: `consult` workers change no source and write only their result file (reviewers, investigators, explorers, judges, design sketches); `execute` workers may change source in the worktree the calling skill assigns (arena candidates, swarm workers, single implementation roles). While any Orca worker runs in the current worktree, the caller leaves it alone.
+Every role in [models.json](../plugins/pstack/models.json) resolves to entries of the form `model@provider`, where `model` is a Claude family name (`opus`) or a Codex model ID (`gpt-6.2-sol`). An entry may add a reasoning effort after a space, as in `opus@claude @xhigh`. The host provider is `claude` on Claude Code and `codex` on Codex. The [run-role skill](../plugins/pstack/skills/run-role/SKILL.md) dispatches each entry: a host-provider entry becomes a native subagent, and any other entry becomes a supervised Orca worker through the bundled [orca-delegate skill](../plugins/pstack/skills/orca-delegate/SKILL.md). Each role has a fixed mode: `consult` workers change no source and write only their result file (reviewers, investigators, explorers, judges, design sketches); `execute` workers may change source in the worktree the calling skill assigns (arena candidates, swarm workers, single implementation roles). While any Orca worker runs in the current worktree, the caller leaves it alone.
 
-Availability is decided only by a real worker start. When a start fails, the other dispatches keep running and run-role reports the attempted command and the error, then asks whether to retry, run that dispatch natively on the host default, or drop it. Nothing falls back silently. By default only the panel roles mix providers; each provider names its own single-role and strongest-role defaults, so single-model roles stay on the host and the caller is not blocked.
+Availability is decided only by a real worker start. When a start fails, the other dispatches keep running and run-role reports the attempted command and the error, then asks whether to retry, run that dispatch natively on the host default, or drop it. Nothing falls back silently. By default only the panel roles mix providers; each provider names its own model per tier, so single-model roles stay on the host and the caller is not blocked.
 
 ## Slash commands
 
-The package includes 67 skill directories: 43 public skills and 24 `principle-*` references. Claude Code uses `/pstack:<name>`. In Codex, request a skill by name or install the [optional shortcuts](#codex) for the `/name` form below.
+The package includes 69 skill directories: 45 public skills and 24 `principle-*` references. Claude Code uses `/pstack:<name>`. In Codex, mention a skill with `$<name>`, such as `$poteto-mode`, or pick one from `/skills`.
 
 Find each skill's instructions in the [skills tree](../plugins/pstack/skills/).
 
@@ -33,12 +33,13 @@ Find each skill's instructions in the [skills tree](../plugins/pstack/skills/).
 | `/technical-writing` | write docs, RFCs, readmes, PR descriptions, and commit messages to one layered standard |
 | `/bro` | restate the last message in plain human language, no jargon |
 | `/in-your-own-words` | play back your goal and the problem before the agent starts |
-| `/sharpen` | aim a task at what you are really after, the way a top expert would, without overspecifying it |
+| `/sharpen` | make a task deeper, not bigger, by naming what a top expert would do and what would show the result is right, then rewrite the prompt to ask for that |
 | `/figure-it-out` | design a rigorous, auditable playbook for a task no bundled playbook fits |
 | `/show-me-your-work` | log decisions to a reviewable tsv decision trail |
 | `/blast-radius` | find what a change could break beyond the diff and prove safety by running code |
 | `/recall` | catch up on recent working context from chat history, live state, and the shared record |
 | `/ketchup` | catch up on everything in this chat since your last message, with an executive summary for each action item |
+| `/ketchup-video` | get the `/ketchup` catch-up as a short silent video of slides, with the calls waiting on you as text under it |
 | `/setup-pstack` | configure pstack per-role model choices |
 | `/poteto-help` | answer a question about pstack with the prompt to send and the file the answer came from |
 | `/run-role` | dispatch one role to its configured entries, native or Orca worker |
@@ -49,6 +50,7 @@ Find each skill's instructions in the [skills tree](../plugins/pstack/skills/).
 | `/maintain-verification-skill` | re-sync a drifted verification skill and its feature map |
 | `/create-formal-verification-skill` | generate a project-local skill that formally verifies one high-risk property |
 | `/maintain-formal-verification-skill` | re-sync a formal verification after the code it covers changed |
+| `/statechart` | check a TLA+ model and draw it as a Mermaid statechart, with the shortest path to each state that breaks a rule |
 | `/deslop` | deslop a diff before commit |
 | `/babysit` | monitor an open PR, fix CI/comments, keep it merge-ready |
 | `/thermo-nuclear-review` | audit a branch's changes for bugs, breakage, security issues, devex regressions, and feature-gate leaks |
@@ -62,17 +64,16 @@ Find each skill's instructions in the [skills tree](../plugins/pstack/skills/).
 
 ## Runtime support
 
-All runtimes share [one skills tree](../plugins/pstack/skills/). A skills-only installation includes the skills, scripts, agent references, and license notices. The Claude Code and Codex plugins also install automatic routing hooks. Codex command shortcuts are separate.
+All runtimes share [one skills tree](../plugins/pstack/skills/). A skills-only installation includes the skills, scripts, agent references, and license notices. The Claude Code and Codex plugins also install automatic routing hooks.
 
 | Runtime | Setup and recorded verification |
 | --- | --- |
 | Claude Code | Install the marketplace plugin (Claude Code 2.1.292 or later). Skills use Claude tool names and model defaults; the plugin installs automatic routing. `codex` entries need Orca. |
 | Codex | Install the native plugin through the repository's marketplace and trust its hook through `/hooks`. The [Codex mapping](../plugins/pstack/skills/poteto-mode/references/codex-tools.md) translates Claude tools and model names. Shared skill symlinks were also detected in a live session. `claude` entries need Orca. |
 | Prime Agent | Its documentation describes shared-directory discovery; it has not been tested in a live session. Choose tools and models through Prime's configuration. |
-| opencode | Verified on version 2.0.30: discovery and skill loading in the CLI and the desktop app, and delegation through its `subagent` tool in the CLI. Configure agents, commands, and permissions in `opencode.json`. Its picker also lists principle skills. |
 | Gemini CLI | Its documentation describes shared-directory discovery; it has not been tested in a live session. Use `/skills list` to check discovery and `/skills reload` after changes. |
 
-These checks cover skill discovery. Delegation remains unverified on Prime Agent and Gemini CLI, and multi-model workflows on all three. On those runtimes, agents must adapt Claude-specific tools, models, and configuration. Each mapping applies only to its runtime.
+These checks cover skill discovery. Delegation remains unverified on Prime Agent and Gemini CLI, as do their multi-model workflows. On those runtimes, agents must adapt Claude-specific tools, models, and configuration. Each mapping applies only to its runtime.
 
 ### Automatic routing
 
@@ -84,13 +85,13 @@ The Claude Code and Codex plugins load the same short [routing instruction](../p
 
 Smaller tasks proceed directly. The full skill loads when invoked, and explicit user instructions take precedence.
 
-To disable routing, run `setup-pstack` and turn off the session hook. In Claude Code, use `/pstack:setup-pstack`. You can also write `session hook: off` in the runtime's sheet, at the path in [setup-pstack's runtime table](../plugins/pstack/skills/setup-pstack/SKILL.md#other-runtimes). The hook reads that setting before injecting its instruction. Without the setting, routing stays on.
+To disable routing on runtimes that support the session hook setting, run `setup-pstack` and turn it off, or write `session hook: off` in the runtime's sheet at the path in [setup-pstack's runtime table](../plugins/pstack/skills/setup-pstack/references/runtimes.md). In Claude Code, use `/pstack:setup-pstack`. On Claude Code, a project's committed `.claude/pstack-models.md` replaces the user's sheet in that project, so `session hook: off` there turns routing off for that project alone. Without the setting, routing stays on. On OMP this setting applies across profiles. On Kimi, disable the plugin to stop its routing instruction. Grok's routing hint is not controlled by the session hook setting.
 
 Skills-only installs and other runtimes do not include the hook. Request `poteto-mode` explicitly, or add a standing instruction to the runtime's instruction file.
 
 ### Shared skills installation
 
-Use this path for Prime Agent, opencode, Gemini CLI, or a skills-only Codex installation. Run the script under [Other harnesses](../README.md#other-harnesses) in the README, which clones the repository and links its skills into `~/.agents/skills/`.
+Use this path for Prime Agent, Gemini CLI, or a skills-only Codex installation. Run the script under [Other harnesses](../README.md#other-harnesses) in the README, which clones the repository and links its skills into `~/.agents/skills/`.
 
 Keep all skill directories, including the principle references. Leave the clone at this path while the links are installed.
 
@@ -112,13 +113,13 @@ The [CI installation check](../.github/workflows/ci.yml) uses the skills CLI to 
 
 ### Codex
 
-The [native plugin manifest](../plugins/pstack/.codex-plugin/plugin.json) points to the shared skills directory and the Codex [SessionStart hook](../plugins/pstack/hooks/codex-hooks.json). The [marketplace catalog](../.agents/plugins/marketplace.json) lists `pstack` in the `pstack-orca` marketplace. Review and trust the hook through `/hooks`; Codex asks again when its definition changes.
+The [native plugin manifest](../plugins/pstack/.codex-plugin/plugin.json) points to the shared skills directory and the Codex [SessionStart hook](../plugins/pstack/hooks/codex-hooks.json). The [marketplace catalog](../.agents/plugins/marketplace.json) lists `pstack` in the `pstack-orca` marketplace. Review and trust the hook, listed as `Loading pstack routing`, through `/hooks`; Codex asks again when its definition changes.
 
 The [README installation](../README.md#codex) registers that catalog with `codex plugin marketplace add`, then installs the plugin with `codex plugin add`. These commands match the help output from `codex-cli 0.154.0-alpha.6.2`. A fresh native installation was not tested for this documentation change.
 
 OpenAI documents [marketplace registration and the plugin format](https://developers.openai.com/plugins/build/plugins#add-a-marketplace-from-the-cli). If your CLI lacks `plugin add`, use the plugin browser after registering the marketplace, or use the [skills-only installation](#shared-skills-installation).
 
-Request `poteto-mode` by name or select its entry, such as `pstack:poteto-mode`. To enable parallel subagents:
+Invoke a skill the two ways [Codex's skills documentation](https://developers.openai.com/codex/skills) gives. Type `$` and the skill's name, such as `$poteto-mode` or `$babysit`, and choose its entry, or pick it from `/skills`. In a plugin install the entry reads `poteto-mode (pstack)` and inserts `$pstack:poteto-mode`. A skills-only install has no `pstack:` prefix. To enable parallel subagents:
 
 ```toml
 [features]
@@ -127,21 +128,10 @@ multi_agent = true
 
 Add this setting to `~/.codex/config.toml` if subagents are disabled. Skills such as `arena`, `interrogate`, and `architect` use parallel agents. The [mapping](../plugins/pstack/skills/poteto-mode/references/codex-tools.md) describes a sequential fallback and translates Claude tool names, model defaults, and verification instructions.
 
-For optional slash-command shortcuts, run this from the clone's root:
-
-```shell
-mkdir -p ~/.codex/prompts
-for c in plugins/pstack/.codex-plugin/prompts/*.md; do
-  target=~/.codex/prompts/"$(basename "$c")"
-  test -e "$target" || test -L "$target" || ln -s "$(pwd)/$c" "$target"
-done
-```
-
-Each shortcut invokes its skill. The commands skip existing files and links. Remove a shortcut by deleting its link at `~/.codex/prompts/<name>.md`. Both native-plugin and skills-only installations work without these shortcuts.
 
 ## Configuration and dependencies
 
-Invoke [setup-pstack](../plugins/pstack/skills/setup-pstack/SKILL.md) to choose models for each role. It detects available models, confirms the choices, and writes an override sheet. Its [runtime table](../plugins/pstack/skills/setup-pstack/SKILL.md#other-runtimes) names the sheet path and loading mechanism for each runtime. Defaults live in [models.json](../plugins/pstack/models.json).
+Invoke [setup-pstack](../plugins/pstack/skills/setup-pstack/SKILL.md) to choose models for each role. It detects available models, confirms the choices, and writes an override sheet. Its [runtime table](../plugins/pstack/skills/setup-pstack/references/runtimes.md) names the sheet path and loading mechanism for each runtime. Defaults live in [models.json](../plugins/pstack/models.json).
 
 For design comparisons and reviews, choose distinct models available to your runtime. The default panel mixes Claude and Codex models; see [Multi-provider roles](#multi-provider-roles).
 
@@ -149,8 +139,8 @@ Install dependencies for the workflows you use:
 
 | Dependency | When you need it |
 | --- | --- |
-| GitHub CLI, `gh` | PR monitoring, shipping, and the `orch` stack frontier. Authenticate with `gh auth login`. The playbooks use Origin's CLI, `origin`, instead when it can resolve the repository. |
-| Bun | The bundled `watch-pr` and `orch` scripts. Their bootstrap installs script dependencies on first run. |
+| GitHub CLI, `gh` | PR monitoring and shipping. Authenticate with `gh auth login`. The playbooks use Origin's CLI, `origin`, instead when it can resolve the repository. |
+| Bun | The bundled `watch-pr` scripts. Their bootstrap installs script dependencies on first run. |
 | `plugin-dev` | Claude Code skill-authoring guidance used by `automate-me`, `reflect`, and `poteto-mode`. |
 | Orca CLI, `orca` | Cross-provider role entries. `run-role` launches them as Orca workers; without Orca those entries fail to start and wait for your decision. |
 | Python 3.10+ | `orca-delegate`'s contract helper, `prepare_contract.py`. |
@@ -178,7 +168,7 @@ Use [create-verification-skill](../plugins/pstack/skills/create-verification-ski
 package.json                      Development tooling for the generator and tests
 plugins/pstack/
   .claude-plugin/plugin.json      Claude Code plugin manifest
-  .codex-plugin/                  Codex manifest and generated prompt stubs
+  .codex-plugin/plugin.json       Codex plugin manifest
   skills/                        Shared skills, references, and scripts
     run-role/                    Role dispatch: native subagent or Orca worker
     orca-delegate/               Bundled Orca delegation policy and contract helper
@@ -193,7 +183,7 @@ Skills-only installs use `plugins/pstack/skills/`. Agent references and license 
 
 ### Generated files and checks
 
-The [generator](../tools/generate.mjs) updates versions, model defaults, the run-role Roles table, Codex prompts and preambles, and portable reference files. The [slash-command table](#slash-commands) supplies the Codex prompt descriptions and order. Edit that table when changing a menu description, then regenerate. Keep a row for every public skill, with `poteto-mode` first.
+The [generator](../tools/generate.mjs) updates versions, model defaults, the run-role Roles table, Codex preambles, and portable reference files. It also fails when the [slash-command table](#slash-commands) and the public skills disagree. Keep a row for every public skill, with `poteto-mode` first.
 
 [Documentation fact tests](../tests/readme-facts.test.mjs) check the skill counts and upstream pin. The table parser requires the header `| command | use it when |`.
 
@@ -211,9 +201,9 @@ CI also checks shell scripts, workflows, Markdown, relative links, and the bundl
 
 ### Fork scope and attribution
 
-This repository forks pstack-claude and merges it through git; see [syncing](../CONTRIBUTING.md#syncing-from-pstack-claude). pstack-claude's skill tree is synced against upstream `7b353f7` (v0.15.27 and later), and its thermos skills and agents against `118e73b` (thermos 1.0.0).
+This repository forks pstack-claude and merges it through git; see [syncing](../CONTRIBUTING.md#syncing-from-pstack-claude). pstack-claude's skill tree is synced against upstream `2f87c85` (v0.15.43), and its thermos skills and agents against `118e73b` (thermos 1.0.0).
 
-The fork adds `run-role`, bundles `orca-delegate`, extends `models.json` with providers, modes, and task-tier efforts, and routes the fan-out skills through `run-role`. pstack-claude ports Lauren Tan's pstack from Cursor to Claude Code and shares the skills with other runtimes. It includes six cursor-team-kit skills, the three thermos skills with their two review subagents, and an independently authored `babysit` skill. The port supplies Claude Code plugin registration and routing, Codex manifests and shortcuts, and the Codex tool mapping. This fork ships Claude Code and Codex only and drops pstack-claude's Pi, GitHub Copilot, and Muse builds.
+The fork adds `run-role`, bundles `orca-delegate`, extends `models.json` with providers and modes, and routes the role dispatches through `run-role`. pstack-claude ports Lauren Tan's pstack from Cursor to Claude Code and shares the skills with other runtimes. It includes six cursor-team-kit skills, the three thermos skills with their two review subagents, and an independently authored `babysit` skill. The port supplies Claude Code plugin registration and routing, Codex manifests, and the Codex tool mapping. This fork ships Claude Code and Codex only and drops pstack-claude's other runtime builds.
 
 Cursor-specific automations, sticky-mode metadata, the Grok Bot UI workflow, and the Cursor UI tutorial are excluded. [tools/upstream.json](../tools/upstream.json) records the revisions and exclusions, [tools/substitutions.json](../tools/substitutions.json) holds the Cursor-to-Claude rewrite rules, and [CHANGES.md](../CHANGES.md) records each release. The bundled `thermo-nuclear-code-quality-review` provides a maintainability review when a workflow calls for one, `thermo-nuclear-review` a correctness and security audit, and `thermos` runs both as parallel subagents.
 
