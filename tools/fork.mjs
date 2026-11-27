@@ -157,6 +157,8 @@ export function overrideSheetBlock(models) {
     "the values here override those defaults. Delete a line to fall back to the skill default. " +
     "Write each entry as `model@provider`; an entry whose provider is not the host runs as an Orca worker " +
     "through the run-role skill, and a bare model must be one the setup skill lists. " +
+    "Such an entry takes its model and effort from that provider's own sheet when that sheet has an entry for the role; " +
+    "this sheet still decides which providers run. " +
     "A value of `inherit-parent` or `auto` runs that role on the parent session's model (the `Agent` call omits `model`); " +
     "an alias entry in a panel list still counts toward that panel's fan-out. " +
     `A pool line (${poolRoles(models).map((r) => code(r.role)).join(", ")}) is a candidate list from which its skill selects one entry; its length sets no count. ` +

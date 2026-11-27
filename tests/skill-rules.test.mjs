@@ -252,6 +252,11 @@ const rules = [
     phrase: "Families are providers, as run-role's family rule defines them.",
   },
   {
+    source: "pstack-orca cross-provider model and effort come from that provider's sheet",
+    file: "run-role/SKILL.md",
+    phrase: "A dispatch whose provider is not the host takes its model and effort from that provider's own sheet.",
+  },
+  {
     source: "pstack-orca no silent fallback",
     file: "run-role/SKILL.md",
     phrase: "do not retry silently and do not fall back.",

@@ -38,13 +38,15 @@ When inactive, do not add a poteto-mode activation instruction. This records the
 
 ### 1. Resolve the entries
 
-Read the role line from the runtime's override sheet (`<config>/pstack-models.md` on Claude Code, `<codex-home>/pstack-models.md` on Codex, as the setup skill resolves them). Without a line, use the default entries in the [Roles](#roles) table. For a role on the `default`, `strongest`, or `worker` tier, substitute the host provider's model for that tier only when that provider has a row in the Providers table. If no native provider is known or no row exists, keep the Roles table entries and route them through Orca as step 2 prescribes.
+Read the role line from the runtime's override sheet, the host sheet (`<config>/pstack-models.md` on Claude Code, `<codex-home>/pstack-models.md` on Codex, as the setup skill resolves them). Without a line, use the default entries in the [Roles](#roles) table. For a role on the `default`, `strongest`, or `worker` tier, substitute the host provider's model for that tier only when that provider has a row in the Providers table. If no native provider is known or no row exists, keep the Roles table entries and route them through Orca as step 2 prescribes.
 
 An explicit model or agent-count request for this invocation takes precedence over the sheet. Keep the role's mode unchanged. A `panel` role runs one agent per entry, so the panel length sets the count; more agents need an explicit request or a longer override list. A pool is the exception, see below.
 
 Aliases inherit the actual parent model.
 
 Resolve each dispatch's effort in this order: an effort the user explicitly requests for this invocation, the effort the caller chose for the job, the entry's effort suffix, the sheet's `default effort` line, then `session`. `session` sets no effort, so the dispatch keeps the runtime's setting.
+
+The host sheet decides the panel: which roles fan out, how many agents run, and which providers sit in it. A dispatch whose provider is not the host takes its model and effort from that provider's own sheet. Find that sheet at the path the setup skill's [runtime table](../setup-pstack/references/runtimes.md) gives for that provider's runtime. Read the same role line there and use its entry of that provider. That entry's effort suffix and that sheet's `default effort` line take the place of the host sheet's in the effort order above. Use the host sheet's entry when that sheet, that role line, or an entry of that provider is missing. When that line has more than one entry of that provider, it is ambiguous: use the host sheet's entry and say so in the result. When a caller gives a role to a provider its host line has no entry for, such as a Claude Code session handing a bug fix to Codex, use that provider's sheet line for the role the same way. Without one there, use that provider's default for the role: its Roles table entry, or else its model for the role's tier in the Providers table. The rule runs both ways: a Codex session that dispatches a Claude entry reads the Claude Code sheet.
 
 Each entry is one of the following, optionally followed by a space and an effort level (`opus@claude @xhigh`). Strip the level before reading the entry.
 
@@ -78,7 +80,7 @@ Never substitute a native model for a cross-provider entry on your own, and neve
 ### 3. Mode, work location, and result location
 
 - `consult`: the worker changes no source and no external state. It writes only to its result location. Reviewers, investigators, explorers, judges, and design sketches run this way.
-- `execute`: the worker may change source within the authorization the calling skill already holds, in the worktree the brief assigns. When the caller assigns no worktree, the worker uses the current one.
+- `execute`: the worker may change source within the authorization the calling skill already holds, in the worktree the brief assigns. When the caller assigns no worktree, the worker uses the current one. It commits only on that worktree's branch. Merging into another branch, pushing, and opening a PR stay with the caller unless the calling contract authorizes them.
 
 The result location is the output location the brief names when the caller assigns one. Otherwise this skill names it: `result.md` inside the call directory that orca-delegate's contract helper creates for the dispatch. Write that path into the contract, and state in the contract that its result-file permission overrides any "do not write files" line in a prompt template the brief carries verbatim.
 

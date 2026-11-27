@@ -2,6 +2,17 @@
 
 This file is the release changelog, with one `## <version> - <title>` entry per release, newest first. The Cursor-to-Claude rewrite rules live in [`tools/substitutions.json`](tools/substitutions.json), and the [sync boundary](CONTRIBUTING.md#the-sync-boundary) in `CONTRIBUTING.md` defines how a change to upstream's skill content is declared.
 
+## 0.16.1 - read a cross-provider entry's model from its provider's sheet and tighten unsupervised launches
+
+A Claude Code session and a Codex session each keep their own `pstack-models.md`. A Codex entry in the Claude Code sheet used to fix the Codex model and effort there, so the same Codex choice had to be kept in two files.
+
+- run-role step 1 splits the two sheets' jobs. The host sheet still decides which roles fan out, how many agents run, and which providers sit in each panel. A dispatch to another provider takes its model and effort from that provider's own sheet, at the path setup-pstack's runtime table gives, and that sheet's effort suffix and `default effort` line replace the host's in the effort order. The host entry applies when that sheet, the role line, or an entry of that provider is missing, or when the line has more than one entry of that provider. A role handed to a provider the host line does not name uses that provider's sheet line, then its default. The rule runs both ways.
+- The written sheet's header and setup-pstack step 3 say the same, so the user learns which file sets a cross-provider model. `CONTEXT.md` and `docs/reference.md` describe the split, and `tests/skill-rules.test.mjs` pins the run-role sentence.
+- run-role's `execute` mode commits only on the assigned worktree's branch. Merging into another branch, pushing, and opening a PR stay with the caller unless the contract authorizes them.
+- orca-delegate's unsupervised launch states how a worker handles questions nobody answers. It decides open questions within its assigned scope and records them, and it stops and records any question outside the caller's authority, such as product behavior or an interface it was not assigned. A role whose job is to decide still decides.
+- An unsupervised launch writes `--prompt` paths with forward slashes, waits for `tui-idle` with a short timeout before it reads the terminal, and never resends the prompt. On 2026-11-27, with Codex CLI 0.170.0 on Windows, an immediate read showed an empty composer although Codex submitted the prompt seconds later, a resend ran the prompt twice, and a backslash path sent from a POSIX shell lost the backslash before `.`.
+- `file-delivery.md` tells every worker, in every mode, not to change Git state shared by all worktrees, such as the stash list or refs it was not assigned. A Claude Code hook may block `git stash`, but other providers have no such hook.
+
 ## 0.16.0 - merge pstack-claude 0.9.143 and drop the fork's difficulty tiers
 
 This release merges pstack-claude from 0.9.102 to 0.9.143 (`412990b`). The merge brings in upstream's Cursor sync to `2f87c85` (v0.15.43): shorter skills, `worker.md`, one-file `how`, `why`, and `reflect`, `interrogate` running on arena's fan-out, the `statechart` and `ketchup-video` skills, the `thermos reviewers` and `no-comments reviewer` roles, and a committed project sheet on Claude Code. The fork now differs from pstack-claude only where Orca runs a role, plus the dropped runtime builds and the `unslop` language step listed below.
